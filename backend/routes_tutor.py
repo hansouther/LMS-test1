@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 from database import db
 from utils import new_id, now_iso
@@ -27,6 +27,12 @@ class MaterialBody(BaseModel):
 class AttendanceBody(BaseModel):
     slot_id: str
     records: List[dict]  # [{student_id, status, note}]
+
+
+class FavoriteBody(BaseModel):
+    student_id: str
+    course_id: str
+    note: Optional[str] = None
 
 
 @router.get("/dashboard")
@@ -118,9 +124,14 @@ async def class_students(slot_id: str, user: dict = Depends(tutor_only)):
     students = await db.users.find({"id": {"$in": student_ids}}, {"_id": 0, "password_hash": 0}).to_list(500)
     existing = await db.attendance.find({"slot_id": slot_id}, {"_id": 0}).to_list(500)
     amap = {a["student_id"]: a for a in existing}
+    favs = await db.favorites.find({"tutor_id": user["id"], "course_id": slot.get("course_id")}, {"_id": 0}).to_list(500)
+    fmap = {f["student_id"]: f for f in favs}
     for s in students:
         rec = amap.get(s["id"])
         s["attendance_status"] = rec["status"] if rec else None
+        fav = fmap.get(s["id"])
+        s["is_favorite"] = bool(fav)
+        s["favorite_note"] = fav.get("note") if fav else None
     return {"slot": slot, "students": students}
 
 
@@ -178,3 +189,38 @@ async def delete_material(material_id: str, user: dict = Depends(tutor_only)):
 @router.get("/courses")
 async def tutor_courses(user: dict = Depends(tutor_only)):
     return await db.courses.find({"active": True}, {"_id": 0}).to_list(100)
+
+
+@router.get("/favorites")
+async def my_favorites(user: dict = Depends(tutor_only)):
+    rows = await db.favorites.find({"tutor_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    sids = list({r["student_id"] for r in rows})
+    cids = list({r["course_id"] for r in rows})
+    students = await db.users.find({"id": {"$in": sids}}, {"_id": 0, "id": 1, "name": 1}).to_list(500)
+    courses = await db.courses.find({"id": {"$in": cids}}, {"_id": 0, "id": 1, "title": 1}).to_list(500)
+    smap = {s["id"]: s["name"] for s in students}
+    cmap = {c["id"]: c["title"] for c in courses}
+    for r in rows:
+        r["student_name"] = smap.get(r["student_id"], "-")
+        r["course_title"] = cmap.get(r["course_id"], "-")
+    return rows
+
+
+@router.post("/favorites")
+async def set_favorite(body: FavoriteBody, user: dict = Depends(tutor_only)):
+    await db.favorites.update_one(
+        {"tutor_id": user["id"], "student_id": body.student_id, "course_id": body.course_id},
+        {"$set": {
+            "id": new_id(), "tutor_id": user["id"], "tutor_name": user["name"],
+            "student_id": body.student_id, "course_id": body.course_id,
+            "note": body.note, "created_at": now_iso(),
+        }},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@router.delete("/favorites")
+async def remove_favorite(student_id: str, course_id: str, user: dict = Depends(tutor_only)):
+    await db.favorites.delete_one({"tutor_id": user["id"], "student_id": student_id, "course_id": course_id})
+    return {"ok": True}

@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 2 verification of CendekiaLMS new features (email notifications, bulk CSV question import, interactive course content with videos + exercises, tutor favorites -> proctor visibility). Backend: 13/13 pytest passed in /app/backend/tests/test_iter2_features.py — covered course content (seeded course_utbk has 2 lessons + 1 exercise), lesson create, exercise create + excluded from standalone tryouts list, CSV template download, CSV import with B->o2 / benar->true / 'jakarta|dki jakarta' essay mapping, student course_learn returns grade (total_points+average) + lessons + exercises, tutor set_favorite -> is_favorite flag on class_students, proctor school-filtered favorites (only school_nusantara, no rizki/maya), tutor remove_favorite, assign_slot email trigger returns 200 (background task), create_tryout published=true email trigger returns 200, file upload+download roundtrip. Frontend (Playwright, all critical flows PASSED): admin login -> /admin/courses -> content-course_utbk -> add YouTube lesson (title/url/save works) -> add exercise navigates to /admin/tryouts/*/builder -> bulk CSV import created 3 questions -> template download filename=template_soal.csv. Student login -> Katalog Kursus -> open-course-course_utbk navigates to /learn -> YouTube iframe visible, 2+ lesson items, 'Total Poin' & 'Rata-rata' headers present, 'Latihan Bab 1' exercise listed with ex-start-ex_utbk_1 button -> starting exercise navigates to /student/exam/* (CBT engine loaded with exam-timer/opt-o*/next-question/submit-exam-side testids), submit produces result page with percentage, grade panel on learn page updated to 'Rata-rata (1/2)' showing 1 submitted attempt. Tutor login -> /tutor/classes -> attendance-btn-slot_chem opens dialog -> fav-btn-student_budi toggles favorite ON and fav-note-student_budi note input appears and accepts text. Proctor login -> dashboard shows 'Siswa Unggulan (Favorit Tentor)' panel with Budi Santoso, course 'Intensif UTBK Saintek 2026', tutor 'Rina Wijaya, S.Pd' and note text — no leakage of Rizki/Maya from school 2. Email endpoints (assign_slot, create_tryout published) all return 200 with background tasks scheduled; Resend send call is fire-and-forget (managed).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin /admin/courses/*/content", "issues": ["Adding an exercise creates a tryout with kind=exercise and immediately shows it in the list even before any questions are added; question_count=0 exercises appear in the student CourseLearn 'Latihan Bernilai' section too — students can 'Kerjakan' an empty exercise and get 0% (not a bug, but consider hiding exercises with question_count=0 from the student view)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter2_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iter2_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: In /app/backend/routes_student.py course_learn(), consider filtering out exercises with 0 questions from the returned 'exercises' list, or in /app/frontend/src/pages/student/CourseLearn.js hide/disable 'Kerjakan' for exercises where question_count==0.",
+    "OPTIONAL: The hidden file input for CSV import in /app/frontend/src/pages/admin/TryoutBuilder.js (line 113) has no data-testid — it works via the button-triggered click, but adding data-testid='import-file' would make automated tests easier."
+  ],
+  "critical_code_review_comments": [
+    "emailer.py send_email uses httpx.AsyncClient with 30s timeout and _assert_safe_email guards (no forms/credentials/short URLs) — good defense.",
+    "routes_admin.py import_questions correctly reports per-row errors while continuing import; row numbers include header offset (+2). Good.",
+    "routes_admin.py _row_to_question 'multiple' correctness relies on options being present before parsing 'correct' — good.",
+    "routes_student.py course_learn: correct exclusion of unsubmitted attempts from grade math (average = sum(taken.percentage)/len(taken)). taken uses status=='submitted'.",
+    "routes_tutor.py set_favorite uses upsert — idempotent. Good. But class_students only reads favorites where course_id == slot.course_id; for slots without course_id, favorites are empty which is acceptable.",
+    "routes_proctor.py favorites is correctly school-scoped via _school_students -> $in student_ids. Verified via test.",
+    "storage.py catches 404 to re-init storage key — resilient. Good.",
+    "routes_admin.py assign_slot uses BackgroundTasks for email send — non-blocking. Good.",
+    "seed.py seed_content is idempotent (checks seed_content_v1 meta) — safe to re-run."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter2_features.py"],
+  "success_rate": {"backend": "100% (13/13 iter2 + 38/38 iter1)", "frontend": "100% of critical flows tested"},
+  "test_credentials": "All 4 role credentials in /app/memory/test_credentials.md verified working. Used admin@lms.id, siswa@lms.id, tutor@lms.id, proktor@lms.id and dewi@lms.id (fresh student for enrollment test).",
+  "seed_data_creation": "No permanent seeds added. Test artifacts: leftover UI_TEST YouTube lesson + UI_TEST Exercise on course_utbk (main agent may want to prune). Backend pytest cleans up its own TEST_ artifacts.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Two test files exist: /app/backend/tests/backend_test.py (iter1 regression) and /app/backend/tests/test_iter2_features.py (iter2 features). Run both: pytest /app/backend/tests/ -v. CBT engine uses testids opt-o1..o4 for single/multiple, and (per code inspection) other type-specific testids for tf/essay — playwright should read test IDs from `Array.from(document.querySelectorAll('[data-testid]'))` after navigating to /student/exam/{id} to discover them per question type. Course_utbk has residual UI_TEST content from this run; if a clean count is needed, delete via admin UI.",
+  "rca of the issue": "No product bugs found. Minor test-only observation: my Playwright CBT answer selectors matched Q1 opt-o1 but did not correctly answer Q2 (truefalse) and Q3 (essay) inside the exam engine, so the submitted attempt scored 0%. This is purely a test-script coverage gap — the E2E flow (start exercise -> submit -> result page with percentage -> grade updated on learn page showing 1/2 taken) executed correctly and demonstrates the numeric grading pipeline is operational."
+}

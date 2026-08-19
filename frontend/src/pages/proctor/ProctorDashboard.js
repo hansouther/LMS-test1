@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, ClipboardCheck, Trophy, Radio, MonitorPlay, BarChart3, Download, AlertTriangle, Activity } from "lucide-react";
+import { Users, ClipboardCheck, Trophy, Radio, MonitorPlay, BarChart3, Download, AlertTriangle, Activity, Star } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import PageHeader from "@/components/common/PageHeader";
 import StatCard from "@/components/common/StatCard";
@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/format";
 export default function ProctorDashboard() {
   const { data, loading } = useFetch("/proctor/dashboard");
   const { data: broadcasts } = useFetch("/proctor/broadcasts");
+  const { data: favorites } = useFetch("/proctor/favorites");
 
   const quick = [
     ["Live Monitoring", "/proctor/monitoring", MonitorPlay, "#4361EE"],
@@ -58,6 +59,22 @@ export default function ProctorDashboard() {
                 </div>
               ) : <Empty icon={Radio} title="Belum ada broadcast" />}
             </div>
+          </div>
+
+          <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-6">
+            <h3 className="font-semibold text-[#0A1128] mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-[#FF9F1C]" fill="#FF9F1C" /> Siswa Unggulan (Favorit Tentor)</h3>
+            <p className="text-sm text-[#94A3B8] mb-4">Siswa yang ditandai tentor memiliki peluang tinggi untuk berhasil.</p>
+            {favorites?.length ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {favorites.map((f) => (
+                  <div key={f.id} className="rounded-xl border border-[#E2E8F0] p-4" data-testid={`fav-${f.id}`}>
+                    <div className="flex items-center gap-2"><Star className="h-4 w-4 text-[#FF9F1C]" fill="#FF9F1C" /><p className="font-semibold text-sm text-[#0A1128]">{f.student_name}</p></div>
+                    <p className="text-xs text-[#94A3B8] mt-1">{f.course_title} · oleh {f.tutor_name}</p>
+                    {f.note && <p className="mt-2 text-sm text-[#475569] rounded-lg bg-[#FFF9F0] p-2 italic">"{f.note}"</p>}
+                  </div>
+                ))}
+              </div>
+            ) : <Empty icon={Star} title="Belum ada siswa unggulan" desc="Tentor belum menandai siswa unggulan di sekolah Anda." />}
           </div>
         </>
       )}

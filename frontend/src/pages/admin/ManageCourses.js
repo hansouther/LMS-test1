@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, BookOpen, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Pencil, Trash2, BookOpen, Users, Video } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -18,6 +19,7 @@ const EMPTY = { title: "", description: "", subject: "", level: "Umum", price: 0
 
 export default function ManageCourses() {
   const { data, loading, refetch } = useFetch("/admin/courses");
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
@@ -64,6 +66,7 @@ export default function ManageCourses() {
                   <ConfirmButton onConfirm={() => del(c.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-course-${c.id}`}><Trash2 className="h-4 w-4" /></Button>} />
                 </div>
               </div>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/courses/${c.id}/content`)} className="mt-3 w-full rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`content-${c.id}`}><Video className="h-4 w-4" /> Kelola Konten & Latihan</Button>
             </div>
           ))}
         </div>

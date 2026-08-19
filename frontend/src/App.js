@@ -17,6 +17,7 @@ import TryoutList from "@/pages/student/TryoutList";
 import TryoutEngine from "@/pages/student/TryoutEngine";
 import TryoutResult from "@/pages/student/TryoutResult";
 import StudentSchedule from "@/pages/student/StudentSchedule";
+import CourseLearn from "@/pages/student/CourseLearn";
 
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import ManageNews from "@/pages/admin/ManageNews";
@@ -29,6 +30,7 @@ import TryoutResults from "@/pages/admin/TryoutResults";
 import ManageBroadcast from "@/pages/admin/ManageBroadcast";
 import ManagePartnerships from "@/pages/admin/ManagePartnerships";
 import ManageUsers from "@/pages/admin/ManageUsers";
+import CourseContent from "@/pages/admin/CourseContent";
 
 import TutorDashboard from "@/pages/tutor/TutorDashboard";
 import JobBidding from "@/pages/tutor/JobBidding";
@@ -58,6 +60,7 @@ function AppRoutes() {
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/learning" element={<LearningRoom />} />
           <Route path="/student/courses" element={<CourseCatalog />} />
+          <Route path="/student/courses/:id/learn" element={<CourseLearn />} />
           <Route path="/student/tryouts" element={<TryoutList />} />
           <Route path="/student/results/:attemptId" element={<TryoutResult />} />
           <Route path="/student/schedule" element={<StudentSchedule />} />
@@ -71,6 +74,7 @@ function AppRoutes() {
           <Route path="/admin/news" element={<ManageNews />} />
           <Route path="/admin/calendar" element={<ManageCalendar />} />
           <Route path="/admin/courses" element={<ManageCourses />} />
+          <Route path="/admin/courses/:id/content" element={<CourseContent />} />
           <Route path="/admin/schedule" element={<ManageSchedule />} />
           <Route path="/admin/tryouts" element={<ManageTryouts />} />
           <Route path="/admin/tryouts/:id/builder" element={<TryoutBuilder />} />

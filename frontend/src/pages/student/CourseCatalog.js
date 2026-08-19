@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { BookOpen, CheckCircle2, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BookOpen, CheckCircle2, Loader2, PlayCircle } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 
 export default function CourseCatalog() {
   const { data, loading, refetch } = useFetch("/student/courses");
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(null);
 
   const enroll = async (id) => {
@@ -46,7 +48,7 @@ export default function CourseCatalog() {
                 <div className="mt-4 flex items-center justify-between">
                   <span className="font-head font-bold text-[#4361EE]">{formatRupiah(c.price)}</span>
                   {c.enrolled ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#10B981]" data-testid={`enrolled-${c.id}`}><CheckCircle2 className="h-4 w-4" /> Terdaftar</span>
+                    <Button onClick={() => navigate(`/student/courses/${c.id}/learn`)} size="sm" className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid={`open-course-${c.id}`}><PlayCircle className="h-4 w-4" /> Buka Kelas</Button>
                   ) : (
                     <Button onClick={() => enroll(c.id)} disabled={busy === c.id} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" size="sm" data-testid={`enroll-${c.id}`}>
                       {busy === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Daftar"}

@@ -26,7 +26,7 @@ async def dashboard(user: dict = Depends(student_only)):
     enrollments = await db.enrollments.count_documents({"student_id": sid})
     attempts = await db.attempts.find({"student_id": sid, "status": "submitted"}, {"_id": 0}).to_list(200)
     avg = round(sum(a["percentage"] for a in attempts) / len(attempts), 1) if attempts else 0
-    available_to = await db.tryouts.count_documents({"published": True})
+    available_to = await db.tryouts.count_documents({"published": True, "kind": {"$ne": "exercise"}})
     materials = await db.materials.count_documents({"visibility": "public"})
     recent = sorted(attempts, key=lambda a: a.get("submitted_at", ""), reverse=True)[:5]
     return {
@@ -77,6 +77,43 @@ async def my_enrollments(user: dict = Depends(student_only)):
     return rows
 
 
+@router.get("/courses/{course_id}/learn")
+async def course_learn(course_id: str, user: dict = Depends(student_only)):
+    if not await db.enrollments.find_one({"course_id": course_id, "student_id": user["id"]}):
+        raise HTTPException(status_code=403, detail="Anda belum terdaftar di kursus ini")
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
+    if not course:
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    exercises = await db.tryouts.find(
+        {"course_id": course_id, "kind": "exercise", "published": True}, {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    ex_ids = [e["id"] for e in exercises]
+    my_attempts = await db.attempts.find(
+        {"student_id": user["id"], "tryout_id": {"$in": ex_ids}}, {"_id": 0, "per_question": 0}
+    ).to_list(500)
+    amap = {a["tryout_id"]: a for a in my_attempts}
+    for ex in exercises:
+        ex["question_count"] = await db.questions.count_documents({"tryout_id": ex["id"]})
+        att = amap.get(ex["id"])
+        ex["attempt_status"] = att["status"] if att else None
+        ex["attempt_id"] = att["id"] if att else None
+        ex["my_percentage"] = att.get("percentage") if att and att["status"] == "submitted" else None
+        ex["my_score"] = att.get("score") if att and att["status"] == "submitted" else None
+        ex["my_max"] = att.get("max_score") if att and att["status"] == "submitted" else None
+    exercises = [e for e in exercises if e.get("question_count", 0) > 0]
+    taken = [a for a in my_attempts if a["status"] == "submitted"]
+    total_points = sum(a.get("score", 0) for a in taken)
+    average = round(sum(a["percentage"] for a in taken) / len(taken), 1) if taken else 0
+    grade = {
+        "total_points": total_points,
+        "average": average,
+        "taken": len(taken),
+        "total": len(exercises),
+    }
+    return {"course": course, "lessons": lessons, "exercises": exercises, "grade": grade}
+
+
 @router.get("/materials")
 async def materials(user: dict = Depends(student_only)):
     course_ids = await _enrolled_course_ids(user["id"])
@@ -107,7 +144,7 @@ async def schedule(user: dict = Depends(student_only)):
 
 @router.get("/tryouts")
 async def tryouts(user: dict = Depends(student_only)):
-    items = await db.tryouts.find({"published": True}, {"_id": 0}).sort("start_at", -1).to_list(100)
+    items = await db.tryouts.find({"published": True, "kind": {"$ne": "exercise"}}, {"_id": 0}).sort("start_at", -1).to_list(100)
     my_attempts = await db.attempts.find({"student_id": user["id"]}, {"_id": 0}).to_list(200)
     amap = {a["tryout_id"]: a for a in my_attempts}
     for t in items:

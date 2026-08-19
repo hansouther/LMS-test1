@@ -36,6 +36,13 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - Seed data demo lengkap (users semua role, kursus, 3 tryout + soal, slot/bids, berita, kalender, broadcast, attempts historis untuk analitik).
 - Testing: 38/38 backend PASS; seluruh flow frontend kritis PASS (iteration_1.json). Tidak ada bug.
 
+## Implemented — Iterasi 2 (2026-08-19)
+- **Notifikasi Email (Resend, dikelola Emergent)**: email ke tentor saat bidding diterima; email ke siswa aktif (yang terdaftar kursus) saat Try Out baru dirilis. Non-blocking via BackgroundTasks; modul `emailer.py` dengan guard keamanan (tanpa form/kredensial/short-URL).
+- **Impor Bank Soal CSV + Excel (.xlsx)**: di TryoutBuilder ada tombol Template & Impor. Endpoint `POST /api/admin/tryouts/{id}/questions/import`. Mendukung 4 tipe soal; kunci berupa huruf A-D / benar-salah / teks esai (pisah `|`).
+- **Kursus Interaktif**: Admin kelola konten kursus (`/admin/courses/:id/content`) — video pembelajaran via YouTube atau unggah file (object storage) + lampiran PDF/dokumen, serta Latihan Soal bernilai (tryout kind=exercise). Siswa buka kelas (`/student/courses/:id/learn`): pemutar video, unduh lampiran, kerjakan latihan; nilai kursus = **Total Poin + Rata-rata** (numerik dari latihan, bukan polling tentor). Object storage via `storage.py` + `routes_files.py` (`/api/upload`, `/api/files/{path}`).
+- **Favorit Siswa (per kursus/kelas)**: tentor menandai siswa unggulan + catatan di Manajemen Kelas; Proktor melihat daftar "Siswa Unggulan" untuk siswa sekolahnya (school-scoped).
+- Testing iterasi 2: 13/13 backend PASS + seluruh flow frontend kritis PASS (iteration_2.json). Tidak ada bug produk.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

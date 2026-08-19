@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, ArrowLeft, HelpCircle, CheckCircle2, X } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, HelpCircle, CheckCircle2, X, Upload, FileDown } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import { Loading, Empty } from "@/components/common/States";
@@ -31,6 +31,31 @@ export default function TryoutBuilder() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
+  const fileRef = useRef();
+
+  const downloadTemplate = async () => {
+    try {
+      const res = await api.get("/admin/questions/template", { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "template_soal.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Gagal mengunduh template"); }
+  };
+
+  const onImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const { data } = await api.post(`/admin/tryouts/${id}/questions/import`, fd);
+      toast.success(`${data.imported} soal berhasil diimpor`);
+      if (data.errors?.length) toast.error(`${data.errors.length} baris gagal. ${data.errors[0]}`);
+      refetch();
+    } catch (err) { toast.error(apiError(err)); }
+    e.target.value = "";
+  };
 
   const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
   const openEdit = (q) => {
@@ -82,7 +107,12 @@ export default function TryoutBuilder() {
           <h1 className="text-2xl font-bold text-[#0A1128]">Kelola Bank Soal</h1>
           <p className="text-sm text-[#475569] mt-1">{questions?.length || 0} soal · Total {(questions || []).reduce((a, q) => a + (q.points || 0), 0)} poin</p>
         </div>
-        <Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-question-btn"><Plus className="h-4 w-4" /> Tambah Soal</Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={downloadTemplate} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="download-template"><FileDown className="h-4 w-4" /> Template</Button>
+          <Button variant="outline" onClick={() => fileRef.current?.click()} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="import-questions"><Upload className="h-4 w-4" /> Impor CSV/Excel</Button>
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onImport} data-testid="import-file" />
+          <Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-question-btn"><Plus className="h-4 w-4" /> Tambah Soal</Button>
+        </div>
       </div>
 
       {loading ? <Loading /> : !questions?.length ? (

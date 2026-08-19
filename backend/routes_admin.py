@@ -1,13 +1,26 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
+import io
+import csv
+import re
+import openpyxl
 
 from database import db
 from utils import new_id, now_iso
 from security import require_roles, hash_password
+from emailer import notify_new_tryout, notify_bid_accepted
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_only = require_roles("admin")
+
+
+async def _active_student_recipients():
+    enrolls = await db.enrollments.find({}, {"_id": 0, "student_id": 1}).to_list(5000)
+    ids = list({e["student_id"] for e in enrolls})
+    students = await db.users.find({"id": {"$in": ids}, "role": "student"}, {"_id": 0, "email": 1, "name": 1}).to_list(5000)
+    return [{"email": s["email"], "name": s.get("name")} for s in students if s.get("email")]
 
 
 # ---------- Models ----------
@@ -55,6 +68,8 @@ class TryoutBody(BaseModel):
     start_at: Optional[str] = None
     end_at: Optional[str] = None
     published: bool = False
+    course_id: Optional[str] = None
+    kind: str = "standalone"
 
 
 class QuestionBody(BaseModel):
@@ -226,7 +241,7 @@ async def slot_bids(slot_id: str, user: dict = Depends(admin_only)):
 
 
 @router.post("/slots/{slot_id}/assign/{bid_id}")
-async def assign_slot(slot_id: str, bid_id: str, user: dict = Depends(admin_only)):
+async def assign_slot(slot_id: str, bid_id: str, background: BackgroundTasks, user: dict = Depends(admin_only)):
     bid = await db.bids.find_one({"id": bid_id, "slot_id": slot_id}, {"_id": 0})
     if not bid:
         raise HTTPException(status_code=404, detail="Bid tidak ditemukan")
@@ -237,13 +252,21 @@ async def assign_slot(slot_id: str, bid_id: str, user: dict = Depends(admin_only
     await db.bids.update_many(
         {"slot_id": slot_id, "id": {"$ne": bid_id}}, {"$set": {"status": "rejected"}}
     )
+    slot = await db.teaching_slots.find_one({"id": slot_id}, {"_id": 0})
+    tutor = await db.users.find_one({"id": bid["tutor_id"]}, {"_id": 0, "email": 1, "name": 1})
+    if slot and tutor and tutor.get("email"):
+        background.add_task(
+            notify_bid_accepted, tutor["email"], tutor.get("name", "Tentor"),
+            slot.get("title", ""), slot.get("date", ""),
+            f'{slot.get("start_time", "")}-{slot.get("end_time", "")}',
+        )
     return {"ok": True}
 
 
 # ---------- Try Out & Questions ----------
 @router.get("/tryouts")
 async def list_tryouts(user: dict = Depends(admin_only)):
-    items = await db.tryouts.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    items = await db.tryouts.find({"kind": {"$ne": "exercise"}}, {"_id": 0}).sort("created_at", -1).to_list(200)
     for t in items:
         t["question_count"] = await db.questions.count_documents({"tryout_id": t["id"]})
         t["attempt_count"] = await db.attempts.count_documents({"tryout_id": t["id"], "status": "submitted"})
@@ -251,17 +274,26 @@ async def list_tryouts(user: dict = Depends(admin_only)):
 
 
 @router.post("/tryouts")
-async def create_tryout(body: TryoutBody, user: dict = Depends(admin_only)):
+async def create_tryout(body: TryoutBody, background: BackgroundTasks, user: dict = Depends(admin_only)):
     doc = {"id": new_id(), **body.model_dump(), "created_by": user["id"], "created_at": now_iso()}
     await db.tryouts.insert_one(doc)
+    if doc.get("published") and doc.get("kind", "standalone") == "standalone":
+        recipients = await _active_student_recipients()
+        if recipients:
+            background.add_task(notify_new_tryout, recipients, doc["title"], doc["subject"])
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
 @router.put("/tryouts/{tryout_id}")
-async def update_tryout(tryout_id: str, body: TryoutBody, user: dict = Depends(admin_only)):
-    res = await db.tryouts.update_one({"id": tryout_id}, {"$set": body.model_dump()})
-    if res.matched_count == 0:
+async def update_tryout(tryout_id: str, body: TryoutBody, background: BackgroundTasks, user: dict = Depends(admin_only)):
+    existing = await db.tryouts.find_one({"id": tryout_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
+    await db.tryouts.update_one({"id": tryout_id}, {"$set": body.model_dump()})
+    if body.published and not existing.get("published") and body.kind == "standalone":
+        recipients = await _active_student_recipients()
+        if recipients:
+            background.add_task(notify_new_tryout, recipients, body.title, body.subject)
     return {"ok": True}
 
 
@@ -392,3 +424,171 @@ async def create_school(body: SchoolBody, user: dict = Depends(admin_only)):
     doc = {"id": new_id(), **body.model_dump(), "created_at": now_iso()}
     await db.schools.insert_one(doc)
     return {k: v for k, v in doc.items() if k != "_id"}
+
+
+# ---------- Course Content: Lessons & Exercises ----------
+class LessonBody(BaseModel):
+    title: str
+    description: Optional[str] = None
+    video_type: str = "youtube"  # youtube | upload
+    video_url: Optional[str] = None
+    attachments: List[dict] = []  # [{name, url, content_type}]
+    order: int = 0
+
+
+class ExerciseBody(BaseModel):
+    title: str
+    subject: Optional[str] = "Latihan"
+    duration_minutes: int = 20
+    description: Optional[str] = None
+
+
+@router.get("/courses/{course_id}/content")
+async def course_content(course_id: str, user: dict = Depends(admin_only)):
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
+    if not course:
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    exercises = await db.tryouts.find({"course_id": course_id, "kind": "exercise"}, {"_id": 0}).sort("created_at", 1).to_list(200)
+    for ex in exercises:
+        ex["question_count"] = await db.questions.count_documents({"tryout_id": ex["id"]})
+        ex["attempt_count"] = await db.attempts.count_documents({"tryout_id": ex["id"], "status": "submitted"})
+    return {"course": course, "lessons": lessons, "exercises": exercises}
+
+
+@router.post("/courses/{course_id}/lessons")
+async def create_lesson(course_id: str, body: LessonBody, user: dict = Depends(admin_only)):
+    if not await db.courses.find_one({"id": course_id}):
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    count = await db.lessons.count_documents({"course_id": course_id})
+    doc = {"id": new_id(), "course_id": course_id, **body.model_dump(), "created_at": now_iso()}
+    if not doc.get("order"):
+        doc["order"] = count + 1
+    await db.lessons.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@router.delete("/lessons/{lesson_id}")
+async def delete_lesson(lesson_id: str, user: dict = Depends(admin_only)):
+    await db.lessons.delete_one({"id": lesson_id})
+    return {"ok": True}
+
+
+@router.post("/courses/{course_id}/exercises")
+async def create_exercise(course_id: str, body: ExerciseBody, user: dict = Depends(admin_only)):
+    if not await db.courses.find_one({"id": course_id}):
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    doc = {
+        "id": new_id(), "title": body.title, "description": body.description,
+        "subject": body.subject or "Latihan", "duration_minutes": body.duration_minutes,
+        "start_at": now_iso(), "end_at": None, "published": True,
+        "course_id": course_id, "kind": "exercise",
+        "created_by": user["id"], "created_at": now_iso(),
+    }
+    await db.tryouts.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+# ---------- Bulk Import Questions (CSV / Excel) ----------
+_LETTERS = ["a", "b", "c", "d", "e", "f"]
+
+
+def _row_to_question(row: dict, order: int):
+    t = str(row.get("type") or "").strip().lower()
+    if t not in ("single", "multiple", "truefalse", "essay"):
+        return None, f"Tipe tidak valid: {t!r}"
+    text = str(row.get("text") or "").strip()
+    if not text:
+        return None, "Kolom 'text' kosong"
+    try:
+        points = int(float(row.get("points") or 1))
+    except Exception:
+        points = 1
+    options, correct = [], []
+    for i, l in enumerate(_LETTERS):
+        v = row.get(f"option_{l}")
+        v = str(v).strip() if v is not None else ""
+        if v:
+            options.append({"id": f"o{i + 1}", "text": v})
+    correct_raw = str(row.get("correct") or "").strip()
+    if t in ("single", "multiple"):
+        for tok in re.split(r"[;,|]", correct_raw):
+            tok = tok.strip().lower()
+            if not tok:
+                continue
+            if tok in _LETTERS:
+                correct.append(f"o{_LETTERS.index(tok) + 1}")
+            else:
+                for o in options:
+                    if o["text"].strip().lower() == tok:
+                        correct.append(o["id"])
+        if not options or not correct:
+            return None, "Opsi atau kunci tidak lengkap"
+    elif t == "truefalse":
+        val = correct_raw.strip().lower()
+        if val in ("true", "benar", "b", "ya", "1"):
+            val = "true"
+        elif val in ("false", "salah", "s", "tidak", "0"):
+            val = "false"
+        else:
+            return None, "Kunci benar/salah tidak valid"
+        correct, options = [val], []
+    else:  # essay
+        correct = [c.strip() for c in re.split(r"[|;]", correct_raw) if c.strip()]
+        options = []
+        if not correct:
+            return None, "Kunci esai kosong"
+    return {"type": t, "text": text, "options": options, "correct_answers": correct,
+            "points": points, "order": order}, None
+
+
+@router.post("/tryouts/{tryout_id}/questions/import")
+async def import_questions(tryout_id: str, file: UploadFile = File(...), user: dict = Depends(admin_only)):
+    if not await db.tryouts.find_one({"id": tryout_id}):
+        raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
+    data = await file.read()
+    fname = (file.filename or "").lower()
+    rows = []
+    try:
+        if fname.endswith(".xlsx") or fname.endswith(".xls"):
+            wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+            ws = wb.active
+            headers = None
+            for r in ws.iter_rows(values_only=True):
+                if headers is None:
+                    headers = [str(c).strip().lower() if c is not None else "" for c in r]
+                    continue
+                rows.append({headers[i]: r[i] for i in range(len(headers)) if i < len(r)})
+        else:
+            text = data.decode("utf-8-sig", errors="ignore")
+            reader = csv.DictReader(io.StringIO(text))
+            for r in reader:
+                rows.append({(k or "").strip().lower(): v for k, v in r.items()})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Gagal membaca berkas: {e}")
+
+    start = await db.questions.count_documents({"tryout_id": tryout_id})
+    imported, errors = 0, []
+    for idx, row in enumerate(rows):
+        q, err = _row_to_question(row, start + imported + 1)
+        if err:
+            errors.append(f"Baris {idx + 2}: {err}")
+            continue
+        q["id"] = new_id()
+        q["tryout_id"] = tryout_id
+        await db.questions.insert_one(q)
+        imported += 1
+    return {"imported": imported, "errors": errors}
+
+
+@router.get("/questions/template")
+async def questions_template(user: dict = Depends(admin_only)):
+    csv_text = (
+        "type,text,option_a,option_b,option_c,option_d,correct,points\n"
+        "single,\"Berapa hasil 2+2?\",3,4,5,6,B,10\n"
+        "multiple,\"Pilih bilangan genap\",2,3,4,5,\"A;C\",10\n"
+        "truefalse,\"Bumi berbentuk bulat\",,,,,benar,10\n"
+        "essay,\"Ibu kota Indonesia?\",,,,,\"jakarta|dki jakarta\",10\n"
+    )
+    return Response(content=csv_text, media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=template_soal.csv"})

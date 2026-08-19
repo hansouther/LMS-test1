@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Users, ClipboardCheck, Clock, Save } from "lucide-react";
+import { Users, ClipboardCheck, Clock, Save, Star } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
 import { Loading, Empty } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/format";
@@ -17,6 +18,7 @@ export default function ClassManagement() {
   const [active, setActive] = useState(null);
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState({});
+  const [favs, setFavs] = useState({});
   const [saving, setSaving] = useState(false);
 
   const openClass = async (slot) => {
@@ -24,9 +26,13 @@ export default function ClassManagement() {
     try {
       const { data } = await api.get(`/tutor/classes/${slot.id}/students`);
       setStudents(data.students);
-      const init = {};
-      data.students.forEach((s) => { init[s.id] = s.attendance_status || "present"; });
+      const init = {}, fav = {};
+      data.students.forEach((s) => {
+        init[s.id] = s.attendance_status || "present";
+        fav[s.id] = { is: !!s.is_favorite, note: s.favorite_note || "" };
+      });
       setRecords(init);
+      setFavs(fav);
     } catch (e) { toast.error(apiError(e)); setStudents([]); }
   };
 
@@ -38,6 +44,28 @@ export default function ClassManagement() {
       toast.success("Presensi tersimpan");
       setActive(null);
     } catch (e) { toast.error(apiError(e)); } finally { setSaving(false); }
+  };
+
+  const toggleFav = async (sid) => {
+    if (!active?.course_id) return toast.error("Kelas ini belum terkait kursus");
+    const cur = favs[sid] || { is: false, note: "" };
+    try {
+      if (cur.is) {
+        await api.delete("/tutor/favorites", { params: { student_id: sid, course_id: active.course_id } });
+        setFavs((f) => ({ ...f, [sid]: { ...cur, is: false } }));
+      } else {
+        await api.post("/tutor/favorites", { student_id: sid, course_id: active.course_id, note: cur.note });
+        setFavs((f) => ({ ...f, [sid]: { ...cur, is: true } }));
+        toast.success("Ditandai sebagai siswa unggulan (peluang tinggi berhasil)");
+      }
+    } catch (e) { toast.error(apiError(e)); }
+  };
+
+  const saveNote = async (sid) => {
+    const cur = favs[sid];
+    if (!cur?.is || !active?.course_id) return;
+    try { await api.post("/tutor/favorites", { student_id: sid, course_id: active.course_id, note: cur.note }); }
+    catch (e) { toast.error(apiError(e)); }
   };
 
   return (
@@ -71,15 +99,30 @@ export default function ClassManagement() {
           ) : (
             <div className="space-y-2 max-h-[50vh] overflow-y-auto">
               {students.map((s) => (
-                <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-[#E2E8F0] p-3" data-testid={`att-row-${s.id}`}>
-                  <div>
-                    <p className="text-sm font-medium text-[#0A1128]">{s.name}</p>
-                    <p className="text-xs text-[#94A3B8]">{s.email}</p>
+                <div key={s.id} className="rounded-lg border border-[#E2E8F0] p-3" data-testid={`att-row-${s.id}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {active?.course_id && (
+                        <button onClick={() => toggleFav(s.id)} data-testid={`fav-btn-${s.id}`} title="Tandai siswa unggulan"
+                          className={favs[s.id]?.is ? "text-[#FF9F1C]" : "text-[#CBD5E1] hover:text-[#FF9F1C]"}>
+                          <Star className="h-5 w-5" fill={favs[s.id]?.is ? "#FF9F1C" : "none"} />
+                        </button>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-[#0A1128]">{s.name}</p>
+                        <p className="text-xs text-[#94A3B8]">{s.email}</p>
+                      </div>
+                    </div>
+                    <Select value={records[s.id]} onValueChange={(v) => setRecords((r) => ({ ...r, [s.id]: v }))}>
+                      <SelectTrigger className="w-32 h-9" data-testid={`att-select-${s.id}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>{STATUS_OPTS.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                  <Select value={records[s.id]} onValueChange={(v) => setRecords((r) => ({ ...r, [s.id]: v }))}>
-                    <SelectTrigger className="w-36 h-9" data-testid={`att-select-${s.id}`}><SelectValue /></SelectTrigger>
-                    <SelectContent>{STATUS_OPTS.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
-                  </Select>
+                  {active?.course_id && favs[s.id]?.is && (
+                    <Input value={favs[s.id]?.note || ""} onChange={(e) => setFavs((f) => ({ ...f, [s.id]: { ...f[s.id], note: e.target.value } }))}
+                      onBlur={() => saveNote(s.id)} placeholder="Catatan peluang keberhasilan (mis. konsisten & rajin)"
+                      className="mt-2 h-9 text-sm" data-testid={`fav-note-${s.id}`} />
+                  )}
                 </div>
               ))}
             </div>

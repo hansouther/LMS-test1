@@ -177,3 +177,18 @@ async def analytics(user: dict = Depends(proctor_only)):
 @router.get("/broadcasts")
 async def broadcasts(user: dict = Depends(proctor_only)):
     return await db.broadcasts.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+
+@router.get("/favorites")
+async def favorites(user: dict = Depends(proctor_only)):
+    students = await _school_students(user.get("school_id"))
+    smap = {s["id"]: s["name"] for s in students}
+    student_ids = list(smap.keys())
+    rows = await db.favorites.find({"student_id": {"$in": student_ids}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    cids = list({r["course_id"] for r in rows})
+    courses = await db.courses.find({"id": {"$in": cids}}, {"_id": 0, "id": 1, "title": 1}).to_list(500)
+    cmap = {c["id"]: c["title"] for c in courses}
+    for r in rows:
+        r["student_name"] = smap.get(r["student_id"], "-")
+        r["course_title"] = cmap.get(r["course_id"], "-")
+    return rows

@@ -10,8 +10,9 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from database import db, client
-from seed import seed
-import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor
+from seed import seed, seed_content
+from storage import init_storage
+import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ app.include_router(routes_admin.router)
 app.include_router(routes_student.router)
 app.include_router(routes_tutor.router)
 app.include_router(routes_proctor.router)
+app.include_router(routes_files.router)
 
 
 @app.get("/api/")
@@ -49,7 +51,15 @@ async def startup():
     await db.attempts.create_index([("student_id", 1), ("tryout_id", 1)])
     await db.questions.create_index("tryout_id")
     await db.login_attempts.create_index("identifier")
+    await db.favorites.create_index([("tutor_id", 1), ("student_id", 1), ("course_id", 1)], unique=True)
+    await db.lessons.create_index("course_id")
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
+    await seed_content()
+    try:
+        init_storage()
+        logger.info("Object storage initialized.")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     logger.info("Startup complete: indexes ensured and seed executed.")
 
 

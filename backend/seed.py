@@ -244,3 +244,44 @@ async def seed(admin_email: str, admin_password: str):
     ])
 
     await db.meta.insert_one({"key": "seed_v1", "at": now_iso()})
+
+
+async def seed_content():
+    """Idempotent: adds video lessons + a graded exercise to the demo course."""
+    if await db.meta.find_one({"key": "seed_content_v1"}):
+        return
+    if not await db.courses.find_one({"id": "course_utbk"}):
+        return
+
+    await db.lessons.insert_many([
+        {"id": "lesson_1", "course_id": "course_utbk", "order": 1,
+         "title": "Pengenalan TPS & Strategi Mengerjakan",
+         "description": "Video pembuka: memahami struktur tes dan strategi manajemen waktu.",
+         "video_type": "youtube", "video_url": "https://www.youtube.com/watch?v=rfscVS0vtbw",
+         "attachments": [], "created_at": now_iso()},
+        {"id": "lesson_2", "course_id": "course_utbk", "order": 2,
+         "title": "Trik Cepat Penalaran Kuantitatif",
+         "description": "Teknik menghitung cepat untuk soal numerik.",
+         "video_type": "youtube", "video_url": "https://www.youtube.com/watch?v=WUvTyaaNkzM",
+         "attachments": [], "created_at": now_iso()},
+    ])
+
+    await db.tryouts.insert_one({
+        "id": "ex_utbk_1", "title": "Latihan Bab 1 — Penalaran Kuantitatif", "subject": "Matematika",
+        "description": "Latihan bernilai untuk mengukur pemahaman bab 1.", "duration_minutes": 15,
+        "start_at": now_iso(), "end_at": None, "published": True,
+        "course_id": "course_utbk", "kind": "exercise",
+        "created_by": "admin_root", "created_at": now_iso(),
+    })
+    await db.questions.insert_many([
+        {"id": "exq_1", "tryout_id": "ex_utbk_1", "order": 1, "type": "single", "points": 10,
+         "text": "Hasil dari 5 × 6 adalah ...",
+         "options": [{"id": "o1", "text": "30"}, {"id": "o2", "text": "35"}, {"id": "o3", "text": "25"}, {"id": "o4", "text": "36"}],
+         "correct_answers": ["o1"]},
+        {"id": "exq_2", "tryout_id": "ex_utbk_1", "order": 2, "type": "truefalse", "points": 10,
+         "text": "Nol (0) termasuk bilangan genap.", "options": [], "correct_answers": ["true"]},
+        {"id": "exq_3", "tryout_id": "ex_utbk_1", "order": 3, "type": "essay", "points": 10,
+         "text": "Akar kuadrat dari 81 adalah ___ (tulis angkanya).", "options": [], "correct_answers": ["9"]},
+    ])
+
+    await db.meta.insert_one({"key": "seed_content_v1", "at": now_iso()})
