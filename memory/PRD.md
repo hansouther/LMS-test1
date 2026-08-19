@@ -57,6 +57,12 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Skalabilitas**: `Cache-Control: public, max-age=60, stale-while-revalidate=300` pada endpoint publik (`/news`, `/news/{id}`, `/calendar`, `/time`, `/stats`) untuk caching CDN/proxy. Panduan lengkap 10.000 concurrent visitor di `/app/README_SERVER.md` (CDN, horizontal scaling, indeks Mongo, object storage+CDN, rate limit, monitoring, load test).
 - Verifikasi: endpoint publik dites via curl (list/detail/time/404/cache header di app-level OK); ke-4 halaman publik dites via screenshot (grid kalender, bullet berita, navigasi ke detail). Catatan: ingress preview meng-override Cache-Control jadi no-store (perilaku env preview, bukan bug kode).
 
+## Implemented — Iterasi 5: SEO, Kursus Publik & Berita Terkait (2026-08-19)
+- **SEO Boost**: hook `useSeo` (title dinamis + meta description + Open Graph + Twitter Card + canonical) dipakai di Landing, /kalender, /berita, /berita/:id (OG per-berita), /kursus. Default OG/description ditanam di `frontend/public/index.html`. `robots.txt` (allow publik, disallow portal privat) + sitemap dinamis `GET /api/public/sitemap.xml` (URL absolut dari header proxy, mencakup semua halaman berita). Catatan: OG per-berita di-set client-side (ideal untuk Google yang render JS; social scraper non-JS butuh SSR/prerender bila diperlukan nanti).
+- **Halaman Kursus Publik** `/kursus` (CoursesPage): katalog kursus aktif tanpa login (dari `GET /api/public/courses`), kartu + harga + CTA "Daftar" → /register. Ditautkan di nav header & footer publik + nav landing.
+- **Berita Terkait**: bagian "Berita Lainnya" di bawah artikel `/berita/:id` (prioritas kategori sama, maks 4) untuk menahan pengunjung menjelajah lebih lama.
+- Verifikasi: sitemap/courses/robots via curl; halaman /kursus, related news, dan OG title/description dinamis via screenshot. Frontend di-restart sekali agar perubahan `public/index.html` & `public/robots.txt` terbaca.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

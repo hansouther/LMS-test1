@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Newspaper, User, CalendarDays } from "lucide-react";
+import { ArrowLeft, Newspaper, User, CalendarDays, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
 import PublicShell from "@/components/public/PublicShell";
+import useSeo, { DEFAULT_OG_IMAGE } from "@/hooks/useSeo";
 import { Loading, Empty } from "@/components/common/States";
 import { formatDate } from "@/lib/format";
 
@@ -10,16 +11,30 @@ export default function NewsDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
+  const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  useSeo({
+    title: item ? `${item.title} — CendekiaLMS` : "Berita — CendekiaLMS",
+    description: item ? (item.content || "").slice(0, 160) : "Berita & pengumuman CendekiaLMS.",
+    image: item?.thumbnail || DEFAULT_OG_IMAGE,
+    type: "article",
+  });
+
   useEffect(() => {
-    setLoading(true); setNotFound(false);
+    setLoading(true); setNotFound(false); setItem(null);
     api.get(`/public/news/${id}`)
-      .then((r) => { setItem(r.data); document.title = `${r.data.title} — CendekiaLMS`; })
+      .then((r) => setItem(r.data))
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
+    api.get("/public/news").then((r) => setRelated(r.data)).catch(() => {});
+    window.scrollTo(0, 0);
   }, [id]);
+
+  const others = related.filter((n) => n.id !== id);
+  const sameCat = item ? others.filter((n) => n.category === item.category) : [];
+  const relatedList = [...sameCat, ...others.filter((n) => !sameCat.includes(n))].slice(0, 4);
 
   return (
     <PublicShell>
@@ -39,10 +54,30 @@ export default function NewsDetail() {
                 <span className="flex items-center gap-1.5"><User className="h-4 w-4" /> {item.author || "Redaksi"}</span>
                 <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDate(item.created_at)}</span>
               </div>
-              <div className="mt-8 prose prose-slate max-w-none text-[#334155] leading-relaxed whitespace-pre-line text-[15px]" data-testid="news-detail-content">
+              <div className="mt-8 max-w-none text-[#334155] leading-relaxed whitespace-pre-line text-[15px]" data-testid="news-detail-content">
                 {item.content}
               </div>
             </article>
+          )}
+
+          {/* Berita Lainnya (related) */}
+          {!loading && !notFound && relatedList.length > 0 && (
+            <div className="mt-14 pt-8 border-t border-[#E2E8F0]" data-testid="related-news">
+              <h2 className="text-xl font-bold text-[#0A1128] mb-4">Berita Lainnya</h2>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {relatedList.map((n) => (
+                  <Link key={n.id} to={`/berita/${n.id}`} data-testid={`related-news-${n.id}`}
+                    className="group rounded-xl border border-[#E2E8F0] bg-white p-4 hover:-translate-y-0.5 hover:border-[#4361EE]/40 transition-all duration-200">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[10px] font-semibold">{n.category}</span>
+                      <span className="text-[11px] text-[#94A3B8]">{formatDate(n.created_at)}</span>
+                    </div>
+                    <h3 className="mt-2 font-semibold text-sm text-[#0A1128] group-hover:text-[#4361EE] transition-colors duration-200 leading-snug">{n.title}</h3>
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#4361EE]">Baca <ChevronRight className="h-3.5 w-3.5" /></span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="mt-12 rounded-2xl bg-[#0A1128] text-white p-8 text-center">

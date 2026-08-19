@@ -1,0 +1,11 @@
+# CendekiaLMS robots.txt
+User-agent: *
+Allow: /
+
+# Halaman portal privat (butuh login) tidak perlu diindeks
+Disallow: /student
+Disallow: /admin
+Disallow: /tutor
+Disallow: /proctor
+
+Sitemap: /api/public/sitemap.xml

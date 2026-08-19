@@ -21,6 +21,7 @@ export function PublicHeader() {
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
           <Link to="/" className="hover:text-[#4361EE] transition-colors duration-200">Beranda</Link>
+          <Link to="/kursus" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="nav-kursus">Kursus</Link>
           <Link to="/kalender" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="nav-kalender">Kalender</Link>
           <Link to="/berita" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="nav-berita">Berita</Link>
         </nav>
@@ -42,6 +43,7 @@ export function PublicFooter() {
           <span className="font-head font-bold">CendekiaLMS</span>
         </div>
         <div className="flex gap-6 text-sm text-white/70">
+          <Link to="/kursus" className="hover:text-white transition-colors duration-200">Kursus</Link>
           <Link to="/kalender" className="hover:text-white transition-colors duration-200">Kalender</Link>
           <Link to="/berita" className="hover:text-white transition-colors duration-200">Berita</Link>
           <Link to="/login" className="hover:text-white transition-colors duration-200">Masuk Portal</Link>

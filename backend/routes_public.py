@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 
 from database import db
@@ -50,6 +50,27 @@ async def get_calendar(response: Response):
 async def server_time():
     now = datetime.now(timezone.utc)
     return {"iso": now.isoformat(), "year": now.year, "month": now.month, "day": now.day}
+
+
+@router.get("/sitemap.xml")
+async def sitemap(request: Request):
+    proto = request.headers.get("x-forwarded-proto", "https")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    base = f"{proto}://{host}".rstrip("/")
+    news = await db.news.find({"published": True}, {"_id": 0, "id": 1, "created_at": 1}).sort("created_at", -1).to_list(1000)
+    urls = []
+    for path, freq in [("/", "daily"), ("/kalender", "weekly"), ("/berita", "daily"), ("/kursus", "weekly")]:
+        urls.append(f"  <url><loc>{base}{path}</loc><changefreq>{freq}</changefreq></url>")
+    for n in news:
+        lastmod = (n.get("created_at") or "")[:10]
+        urls.append(f"  <url><loc>{base}/berita/{n['id']}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq></url>")
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(urls)
+        + "\n</urlset>\n"
+    )
+    return Response(content=xml, media_type="application/xml", headers={"Cache-Control": _CACHE})
 
 
 @router.get("/courses")

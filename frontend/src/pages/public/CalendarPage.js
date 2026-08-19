@@ -3,6 +3,7 @@ import { CalendarDays } from "lucide-react";
 import api from "@/lib/api";
 import PublicShell from "@/components/public/PublicShell";
 import MonthCalendar from "@/components/public/MonthCalendar";
+import useSeo from "@/hooks/useSeo";
 import { Loading } from "@/components/common/States";
 
 export default function CalendarPage() {
@@ -10,8 +11,12 @@ export default function CalendarPage() {
   const [serverNow, setServerNow] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  useSeo({
+    title: "Kalender Akademik — CendekiaLMS",
+    description: "Kalender akademik bulanan CendekiaLMS: jadwal ujian, tenggat, libur, dan acara. Diperbarui otomatis mengikuti waktu server.",
+  });
+
   useEffect(() => {
-    document.title = "Kalender Akademik — CendekiaLMS";
     Promise.all([
       api.get("/public/calendar").then((r) => setEvents(r.data)).catch(() => {}),
       api.get("/public/time").then((r) => setServerNow(r.data.iso)).catch(() => {}),

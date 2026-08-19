@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MonthCalendar from "@/components/public/MonthCalendar";
+import useSeo from "@/hooks/useSeo";
 import { toast } from "sonner";
 
 const HERO = "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NzE1MDU5OHww&ixlib=rb-4.1.0&q=85";
@@ -50,6 +51,7 @@ function Header() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
           <a href="#cara" className="hover:text-[#4361EE] transition-colors duration-200">Cara Kerja</a>
           <a href="#portal" className="hover:text-[#4361EE] transition-colors duration-200">Portal</a>
+          <Link to="/kursus" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-kursus">Kursus</Link>
           <Link to="/kalender" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-kalender">Kalender</Link>
           <Link to="/berita" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-berita">Berita</Link>
           <a href="#kemitraan" className="hover:text-[#4361EE] transition-colors duration-200">Kemitraan</a>
@@ -135,6 +137,11 @@ export default function Landing() {
   const [serverNow, setServerNow] = useState(null);
   const [stats, setStats] = useState({ students: 0, tutors: 0, courses: 0, schools: 0 });
   const navigate = useNavigate();
+
+  useSeo({
+    title: "CendekiaLMS — Platform Belajar, Try Out CBT & Kursus Interaktif",
+    description: "CendekiaLMS: satu ekosistem untuk belajar, mengajar & memantau prestasi. Try Out CBT, kursus interaktif, kalender akademik, dan analitik nilai untuk sekolah mitra.",
+  });
 
   useEffect(() => {
     api.get("/public/news").then((r) => setNews(r.data)).catch(() => {});

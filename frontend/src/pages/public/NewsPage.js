@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Newspaper, ArrowRight, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
 import PublicShell from "@/components/public/PublicShell";
+import useSeo from "@/hooks/useSeo";
 import { Loading, Empty } from "@/components/common/States";
 import { formatDate } from "@/lib/format";
 
@@ -10,8 +11,12 @@ export default function NewsPage() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  useSeo({
+    title: "Berita & Pengumuman — CendekiaLMS",
+    description: "Berita, pengumuman, dan informasi program terbaru dari CendekiaLMS. Klik judul untuk membaca selengkapnya.",
+  });
+
   useEffect(() => {
-    document.title = "Berita & Pengumuman — CendekiaLMS";
     api.get("/public/news").then((r) => setNews(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
