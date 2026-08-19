@@ -1,0 +1,143 @@
+{
+  "theme_strategy": "Hybrid: Toggle for Public Landing Page (Light/Dark). Forced Light Theme for Dashboards to ensure cognitive comfort during long viewing sessions.",
+  "typography": {
+    "headings": {
+      "font": "Outfit",
+      "weights": ["500", "600", "700"],
+      "usage": "Use for all H1, H2, H3. Highly legible, modern, conveys intelligence.",
+      "tracking": "tight"
+    },
+    "body": {
+      "font": "DM Sans",
+      "weights": ["400", "500"],
+      "usage": "Use for all paragraphs, labels, body text. Soft, accessible, reduces eye strain."
+    },
+    "mono": {
+      "font": "JetBrains Mono",
+      "weights": ["400"],
+      "usage": "Use for CBT/Try Out timers, exam scores, and data grids."
+    }
+  },
+  "colors": {
+    "palette_name": "Intelligent & Comfortable",
+    "primary": {
+      "hex": "#4361EE",
+      "name": "Intellect Blue",
+      "usage": "CTAs, active navigation, progress indicators. Evokes trust and mental clarity."
+    },
+    "accent": {
+      "hex": "#FF9F1C",
+      "name": "Vivid Amber",
+      "usage": "Alerts, secondary CTAs, focus points, 'Job Bidding' highlights. Striking without vibrating."
+    },
+    "background_dashboard": {
+      "hex": "#F4F7FE",
+      "name": "Soft Slate",
+      "usage": "Main dashboard background. Very comfortable for long study sessions."
+    },
+    "surface": {
+      "hex": "#FFFFFF",
+      "name": "Pure White",
+      "usage": "Cards, sidebars, topnavs."
+    },
+    "text": {
+      "high_emphasis": "#0A1128",
+      "medium_emphasis": "#475569",
+      "low_emphasis": "#94A3B8"
+    },
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444"
+    },
+    "forbidden_colors": [
+      "#1B93A4",
+      "#7351B7"
+    ]
+  },
+  "grids": {
+    "bento_marketing": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 with gap-8 to gap-12 for high visual impact and asymmetry.",
+    "dashboard_dense": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-4 or gap-6 for data correlation."
+  },
+  "layouts": {
+    "global_spacing": "Use 2-3x typical spacing. Containers with borders MUST have internal padding (p-6 or p-8).",
+    "public_landing": "Modular sections with generous whitespace. Bento grid for features. Hero with Bold outcome-driven headline, Primary CTA + Secondary 'Watch Overview'.",
+    "dashboards_general": "Task-first layout. Left sidebar navigation, top header (search, profile). Main area with dense grid. Cardless, rectangular styles with minimal borders (1px solid #E2E8F0).",
+    "portal_specifics": {
+      "student": "Progress-centric. Hero row with next lesson, CBT/TryOut engine. Grid for course catalog.",
+      "admin": "Control center. Data-heavy lists, dense Shadcn tables for course/schedule/TO management.",
+      "tutor": "Job bidding feed, clear calendar widget for personal schedule, class management lists.",
+      "proctor": "Live monitoring matrix, performance trend charts, report download center."
+    }
+  },
+  "visual_enhancers": {
+    "borders": "1px solid #E2E8F0. Subtle to maintain structure without clutter.",
+    "glassmorphism": "Only for sticky header on Landing Page: backdrop-blur-xl bg-white/70. DO NOT use fully transparent backgrounds under text.",
+    "shadows": "Minimal ambient shadow for hover states (shadow-md). Flat for static cards."
+  },
+  "motion": {
+    "interactions": "Hover states on all interactive elements (lift -translate-y-1). Explicit hover text colors.",
+    "transitions": "Use specific properties: transition-transform duration-200, transition-colors duration-200. NO transition-all.",
+    "loading": "Skeleton loading states for CBT engines and analytics."
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 ratio for normal text. Avoid light grey text on white.",
+    "focus": "focus:ring-2 focus:ring-[#4361EE]/50 focus:outline-none.",
+    "testing": "All interactive elements MUST include data-testid attribute in kebab-case."
+  },
+  "component_name": {
+    "buttons": "Pill-shaped or rounded-md. Primary: bg-[#4361EE] text-white hover:bg-[#344ED0].",
+    "cards": "Go cardless where possible. When needed, use rounded-lg with 1px border. No excessive box-shadow.",
+    "forms": "Always use Shadcn input, select, date-picker. DO NOT use native HTML <select> or <input type='date'>.",
+    "tables": "Shadcn tables for all data lists (Admin, Proctor).",
+    "charts": "Shadcn chart components (recharts) for Proctor Analytics.",
+    "toasts": "Use Sonner component for notifications (e.g., successful bidding)."
+  },
+  "media": {
+    "icons": "lucide-react for all portals.",
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NzE1MDU5OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Hero / Public Landing",
+        "description": "Group of modern students. Primary hero image for the LMS value proposition."
+      },
+      {
+        "url": "https://images.pexels.com/photos/9159042/pexels-photo-9159042.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "Feature Section / Student Dashboard",
+        "description": "Interactive learning environment. Use for 'Interactive Learning Room' showcase."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1509062522246-3755977927d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwyfHx0dXRvciUyMHRlYWNoaW5nJTIwY2xhc3N8ZW58MHx8fHwxNzg3MTUwNTk4fDA&ixlib=rb-4.1.0&q=85",
+        "category": "Tutor Section",
+        "description": "Teacher presenting to class. Use for 'Job Bidding' and 'Tutor Dashboard' promotions."
+      }
+    ]
+  },
+  "3d_libraries": {
+    "library": "framer-motion",
+    "steps": "1. yarn add framer-motion 2. Import motion from framer-motion 3. Apply smooth staggered entrances in Landing Page and Job Bidding feeds.",
+    "instructions": "Keep Dashboard interactions lightweight. Use framer-motion sparingly for reveals."
+  },
+  "instructions_to_main_agent": [
+    "Create .js or .jsx files, NOT .tsx files.",
+    "Implement 5 distinct portals based on Role-Based Access Control (RBAC): Guest (Landing), Student, Admin, Tutor, Proctor.",
+    "Build a robust layout wrapper with Sidebar (for dashboards) and Header.",
+    "Use Shadcn UI extensively for forms, tables, and dialogs.",
+    "For Proctor analytics, implement Shadcn Charts."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Do not center align the app container (.App { text-align: center; }). It disrupts natural reading flow.",
+    "Every interaction needs micro-animations - hover states, transitions.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Do not use generic placeholder image URLs. Use the provided ones.",
+    "Add 'data-testid' to all interactive and key informational elements.",
+    "Use 'sonner' for toasts. Sonner component located in /app/src/components/ui/sonner.js",
+    "Ensure hover states explicitly set text colors, e.g., hover:bg-slate-900 hover:text-white.",
+    "Limit the use of PRIMARY color to CTAs and active states.",
+    "DO NOT use transition-all. Target specific properties.",
+    "Grid items MUST be direct children of grid containers."
+  ]
+}

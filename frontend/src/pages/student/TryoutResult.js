@@ -1,0 +1,82 @@
+import { useParams, useNavigate } from "react-router-dom";
+import { CheckCircle2, XCircle, ArrowLeft, Trophy } from "lucide-react";
+import useFetch from "@/hooks/useFetch";
+import { Loading } from "@/components/common/States";
+import { Button } from "@/components/ui/button";
+
+const TYPE_LABEL = { single: "Pilihan Ganda", multiple: "Pilihan Ganda Kompleks", truefalse: "Benar/Salah", essay: "Esai" };
+
+function answerText(pq) {
+  const opts = pq.options || [];
+  const toText = (arr) => arr.map((a) => {
+    const o = opts.find((o) => o.id === a);
+    if (o) return o.text;
+    if (a === "true") return "Benar";
+    if (a === "false") return "Salah";
+    return a;
+  }).join(", ");
+  return { student: toText(pq.student_answer || []) || "(kosong)", correct: toText(pq.correct_answers || []) };
+}
+
+export default function TryoutResult() {
+  const { attemptId } = useParams();
+  const navigate = useNavigate();
+  const { data, loading } = useFetch(`/student/attempts/${attemptId}`);
+
+  if (loading) return <Loading />;
+  const pct = data.percentage;
+  const color = pct >= 70 ? "#10B981" : pct >= 50 ? "#FF9F1C" : "#EF4444";
+
+  return (
+    <div data-testid="tryout-result">
+      <Button variant="ghost" onClick={() => navigate("/student/tryouts")} className="mb-4 text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]" data-testid="back-to-tryouts"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
+
+      <div className="rounded-2xl bg-[#0A1128] text-white p-8 relative overflow-hidden">
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full blur-3xl" style={{ backgroundColor: `${color}55` }} />
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div>
+            <p className="text-white/70 text-sm">{data.tryout?.title}</p>
+            <h1 className="mt-1 text-2xl font-bold">Hasil Try Out Anda</h1>
+            <p className="mt-3 text-white/70 text-sm">Skor: <span className="font-mono2 font-bold text-white">{data.score} / {data.max_score}</span></p>
+          </div>
+          <div className="text-center">
+            <div className="h-28 w-28 rounded-full flex items-center justify-center border-4" style={{ borderColor: color }}>
+              <div>
+                <p className="font-mono2 text-3xl font-bold" style={{ color }}>{pct}%</p>
+                <p className="text-[10px] text-white/60 uppercase tracking-wide">Nilai Akhir</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Trophy className="h-5 w-5 text-[#FF9F1C]" /> Pembahasan Jawaban</h2>
+      <div className="space-y-4">
+        {(data.per_question || []).map((pq, i) => {
+          const at = answerText(pq);
+          return (
+            <div key={pq.question_id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`review-${i}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  {pq.correct ? <CheckCircle2 className="h-5 w-5 text-[#10B981] shrink-0 mt-0.5" /> : <XCircle className="h-5 w-5 text-[#EF4444] shrink-0 mt-0.5" />}
+                  <div>
+                    <p className="text-[11px] font-semibold text-[#94A3B8]">Soal {i + 1} · {TYPE_LABEL[pq.type]}</p>
+                    <p className="mt-1 text-sm text-[#0A1128]">{pq.text}</p>
+                  </div>
+                </div>
+                <span className="font-mono2 text-sm font-bold shrink-0" style={{ color: pq.correct ? "#10B981" : "#EF4444" }}>{pq.earned}/{pq.points}</span>
+              </div>
+              <div className="mt-3 ml-8 grid sm:grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-[#F4F7FE] px-3 py-2"><span className="text-xs text-[#94A3B8]">Jawaban Anda:</span> <span className="text-[#0A1128]">{at.student}</span></div>
+                <div className="rounded-lg bg-[#ECFDF5] px-3 py-2"><span className="text-xs text-[#94A3B8]">Kunci:</span> <span className="text-[#10B981] font-medium">{at.correct}</span></div>
+              </div>
+            </div>
+          );
+        })}
+        {(!data.per_question || data.per_question.length === 0) && (
+          <p className="text-sm text-[#94A3B8]">Pembahasan tidak tersedia untuk hasil ini.</p>
+        )}
+      </div>
+    </div>
+  );
+}

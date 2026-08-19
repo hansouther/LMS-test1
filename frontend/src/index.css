@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .font-head {
+    font-family: "Outfit", sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.font-mono2 {
+    font-family: "JetBrains Mono", monospace;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 226 55% 11%;
+        --card: 0 0% 100%;
+        --card-foreground: 226 55% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 226 55% 11%;
+        --primary: 230 83% 60%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 226 40% 96%;
+        --secondary-foreground: 226 40% 22%;
+        --muted: 226 30% 96%;
+        --muted-foreground: 215 20% 42%;
+        --accent: 226 100% 96%;
+        --accent-foreground: 230 83% 45%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --ring: 230 83% 60%;
+        --chart-1: 230 83% 60%;
+        --chart-2: 33 100% 55%;
+        --chart-3: 160 84% 39%;
+        --chart-4: 199 89% 48%;
+        --chart-5: 280 60% 60%;
+        --radius: 0.7rem;
+    }
+    .dark {
+        --background: 226 55% 7%;
+        --foreground: 0 0% 98%;
+        --card: 226 45% 10%;
+        --card-foreground: 0 0% 98%;
+        --popover: 226 45% 10%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 230 83% 63%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 226 30% 16%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 226 30% 16%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 226 40% 18%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62% 45%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 226 30% 18%;
+        --input: 226 30% 18%;
+        --ring: 230 83% 63%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+.brand-grid-bg {
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(67, 97, 238, 0.12) 1px, transparent 0);
+    background-size: 28px 28px;
+}
+
+::selection {
+    background: rgba(67, 97, 238, 0.18);
+    color: #0a1128;
+}
