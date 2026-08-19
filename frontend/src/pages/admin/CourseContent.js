@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Video, FileText, Youtube, Upload, Settings2, BarChart3, Loader2, Paperclip, PlayCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Video, FileText, Youtube, Upload, Settings2, BarChart3, Loader2, Paperclip, PlayCircle, FileArchive, CheckCircle2, XCircle } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import { uploadFile } from "@/lib/media";
@@ -26,7 +26,24 @@ export default function CourseContent() {
   const [uploadingAtt, setUploadingAtt] = useState(false);
   const [exOpen, setExOpen] = useState(false);
   const [exForm, setExForm] = useState({ title: "", duration_minutes: 15 });
+  const [zipOpen, setZipOpen] = useState(false);
+  const [zipImporting, setZipImporting] = useState(false);
+  const [zipResult, setZipResult] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
+
+  const onZipFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setZipImporting(true); setZipResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data: res } = await api.post(`/admin/courses/${id}/lessons/import-zip`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setZipResult(res);
+      toast.success(`${res.created} materi diimpor`);
+      refetch();
+    } catch (err) { toast.error(apiError(err)); } finally { setZipImporting(false); e.target.value = ""; }
+  };
 
   const onVideoFile = async (e) => {
     const file = e.target.files?.[0];
@@ -84,7 +101,10 @@ export default function CourseContent() {
           {/* Lessons */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-[#0A1128] flex items-center gap-2"><Video className="h-5 w-5 text-[#4361EE]" /> Video Pembelajaran</h2>
-            <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-lesson-btn"><Plus className="h-4 w-4" /> Tambah Pelajaran</Button>
+            <div className="flex gap-2">
+              <Button onClick={() => { setZipResult(null); setZipOpen(true); }} variant="outline" className="rounded-full border-[#CBD5E1] text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="import-zip-btn"><FileArchive className="h-4 w-4" /> Impor ZIP</Button>
+              <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-lesson-btn"><Plus className="h-4 w-4" /> Tambah Pelajaran</Button>
+            </div>
           </div>
           {data.lessons.length === 0 ? <Empty icon={Video} title="Belum ada pelajaran" /> : (
             <div className="space-y-3 mb-10">
@@ -182,8 +202,7 @@ export default function CourseContent() {
       </Dialog>
 
       {/* Exercise dialog */}
-      <Dialog open={exOpen} onOpenChange={setExOpen}>
-        <DialogContent>
+      <Dialog open={exOpen} onOpenChange={setExOpen}>        <DialogContent>
           <DialogHeader><DialogTitle>Tambah Latihan Soal</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Judul Latihan</Label><Input value={exForm.title} onChange={(e) => setExForm((f) => ({ ...f, title: e.target.value }))} className="mt-1.5" data-testid="exercise-title" /></div>
@@ -192,6 +211,36 @@ export default function CourseContent() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setExOpen(false)}>Batal</Button>
             <Button onClick={saveExercise} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-exercise">Buat & Tambah Soal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ZIP bulk import dialog */}
+      <Dialog open={zipOpen} onOpenChange={setZipOpen}>
+        <DialogContent data-testid="zip-import-dialog">
+          <DialogHeader><DialogTitle>Impor Materi Massal (ZIP)</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-[#475569]">Unggah satu berkas ZIP berisi banyak video (mp4, webm, mov) dan dokumen (pdf, doc, docx, ppt, pptx). Setiap berkas otomatis menjadi satu pelajaran baru.</p>
+            <label className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-6 cursor-pointer hover:bg-[#F4F7FE]" data-testid="zip-upload">
+              {zipImporting ? <Loader2 className="h-7 w-7 animate-spin text-[#4361EE]" /> : <FileArchive className="h-7 w-7 text-[#4361EE]" />}
+              <span className="text-sm font-medium text-[#0A1128]">{zipImporting ? "Mengimpor materi…" : "Pilih berkas .zip"}</span>
+              <span className="text-xs text-[#94A3B8]">Video & dokumen akan diproses otomatis</span>
+              <input type="file" accept=".zip,application/zip" className="hidden" onChange={onZipFile} disabled={zipImporting} />
+            </label>
+            {zipResult && (
+              <div className="rounded-lg bg-[#F4F7FE] p-4 space-y-2" data-testid="zip-result">
+                <div className="flex items-center gap-2 text-sm text-[#10B981]"><CheckCircle2 className="h-4 w-4" /> {zipResult.created} materi berhasil diimpor</div>
+                <div className="flex items-center gap-2 text-sm text-[#94A3B8]"><FileText className="h-4 w-4" /> {zipResult.skipped} berkas dilewati (format tidak didukung)</div>
+                {zipResult.errors?.length > 0 && (
+                  <div className="text-sm text-red-600 space-y-1">
+                    {zipResult.errors.map((err, i) => (<div key={i} className="flex items-center gap-2"><XCircle className="h-4 w-4 shrink-0" /> {err}</div>))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setZipOpen(false)} data-testid="zip-close">Tutup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

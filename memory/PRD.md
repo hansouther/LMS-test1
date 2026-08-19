@@ -43,6 +43,20 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Favorit Siswa (per kursus/kelas)**: tentor menandai siswa unggulan + catatan di Manajemen Kelas; Proktor melihat daftar "Siswa Unggulan" untuk siswa sekolahnya (school-scoped).
 - Testing iterasi 2: 13/13 backend PASS + seluruh flow frontend kritis PASS (iteration_2.json). Tidak ada bug produk.
 
+## Implemented — Iterasi 3 (2026-08-19)
+- **Progres kursus per pelajaran**: bar progres (selesai/total + %) di CourseLearn; tombol "Tandai Selesai" per pelajaran (`POST /api/student/lessons/{id}/complete`), ikon checklist di daftar pelajaran.
+- **Achievement/Lencana (bukan sertifikat)**: 4 badge — `video_master`, `exercise_champion`, `perfect_score`, `course_complete` — tampil di CourseLearn (earned/locked) + strip lencana di StudentDashboard.
+- **Kuis acak & ulang (retake)**: siswa bisa mengulang latihan (attempt baru), soal & opsi diacak (`random.shuffle`), nilai kursus pakai best-score.
+- **Impor materi massal (ZIP)**: admin unggah 1 ZIP berisi banyak video/PDF → otomatis jadi pelajaran (`POST /api/admin/courses/{id}/lessons/import-zip`). UI: tombol "Impor ZIP" + dialog hasil (created/skipped/errors) di CourseContent.
+- Testing iterasi 3: 9/9 backend PASS + seluruh flow frontend kritis PASS (iteration_3.json). Tidak ada bug.
+
+## Implemented — Iterasi 4: Halaman Publik & Skala Server (2026-08-19)
+- **Halaman publik terpisah** untuk SEO & jangkauan trafik besar: `/kalender` (CalendarPage), `/berita` (NewsPage), `/berita/:id` (NewsDetail). Nav header landing kini menuju halaman-halaman ini.
+- **Kalender bulanan penuh (grid)**: komponen `MonthCalendar` menampilkan grid bulan berjalan mengikuti waktu server (`GET /api/public/time`), hari ini disorot, event ditandai dot berwarna + legend + daftar agenda. Dipakai di landing (compact) dan halaman `/kalender` (lengkap + navigasi bulan).
+- **Berita ringkas di landing**: hanya poin + judul (klik → detail `/berita/:id`). Endpoint baru `GET /api/public/news/{id}` (404 bila tidak ada).
+- **Skalabilitas**: `Cache-Control: public, max-age=60, stale-while-revalidate=300` pada endpoint publik (`/news`, `/news/{id}`, `/calendar`, `/time`, `/stats`) untuk caching CDN/proxy. Panduan lengkap 10.000 concurrent visitor di `/app/README_SERVER.md` (CDN, horizontal scaling, indeks Mongo, object storage+CDN, rate limit, monitoring, load test).
+- Verifikasi: endpoint publik dites via curl (list/detail/time/404/cache header di app-level OK); ke-4 halaman publik dites via screenshot (grid kalender, bullet berita, navigasi ke detail). Catatan: ingress preview meng-override Cache-Control jadi no-store (perilaku env preview, bukan bug kode).
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, List
+import random
 
 from database import db
 from utils import new_id, now_iso
@@ -15,9 +16,77 @@ class SubmitBody(BaseModel):
     answers: Dict[str, List[str]]
 
 
+class LessonCompleteBody(BaseModel):
+    completed: bool = True
+
+
+BADGES = [
+    {"code": "video_master", "label": "Ahli Video", "desc": "Menyelesaikan semua video pembelajaran"},
+    {"code": "exercise_champion", "label": "Juara Latihan", "desc": "Menuntaskan semua latihan bernilai"},
+    {"code": "perfect_score", "label": "Nilai Sempurna", "desc": "Meraih 100% pada sebuah latihan"},
+    {"code": "course_complete", "label": "Kelas Tuntas", "desc": "Semua video & latihan selesai"},
+]
+
+
 async def _enrolled_course_ids(student_id: str):
     rows = await db.enrollments.find({"student_id": student_id}, {"_id": 0}).to_list(200)
     return [r["course_id"] for r in rows]
+
+
+async def _course_bundle(student_id: str, course_id: str):
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
+    if not course:
+        return None
+    lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    prog = await db.lesson_progress.find(
+        {"student_id": student_id, "course_id": course_id, "completed": True}, {"_id": 0}
+    ).to_list(500)
+    completed_ids = {p["lesson_id"] for p in prog}
+    for l in lessons:
+        l["completed"] = l["id"] in completed_ids
+
+    exercises = await db.tryouts.find(
+        {"course_id": course_id, "kind": "exercise", "published": True}, {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    ex_out = []
+    for ex in exercises:
+        qc = await db.questions.count_documents({"tryout_id": ex["id"]})
+        if qc == 0:
+            continue
+        ex["question_count"] = qc
+        atts = await db.attempts.find(
+            {"student_id": student_id, "tryout_id": ex["id"], "status": "submitted"}, {"_id": 0, "per_question": 0}
+        ).to_list(200)
+        if atts:
+            best = max(atts, key=lambda a: a.get("percentage", 0))
+            ex.update({"attempt_status": "submitted", "attempts_count": len(atts),
+                       "best_attempt_id": best["id"], "my_percentage": best.get("percentage"),
+                       "my_score": best.get("score"), "my_max": best.get("max_score")})
+        else:
+            ex.update({"attempt_status": None, "attempts_count": 0, "best_attempt_id": None,
+                       "my_percentage": None, "my_score": None, "my_max": None})
+        ex_out.append(ex)
+
+    taken = [e for e in ex_out if e["attempt_status"] == "submitted"]
+    total_points = sum(e["my_score"] or 0 for e in taken)
+    average = round(sum(e["my_percentage"] for e in taken) / len(taken), 1) if taken else 0
+    lessons_total = len(lessons)
+    lessons_completed = sum(1 for l in lessons if l["completed"])
+    progress = {
+        "lessons_completed": lessons_completed, "lessons_total": lessons_total,
+        "percent": round(lessons_completed / lessons_total * 100) if lessons_total else 0,
+    }
+    grade = {"total_points": total_points, "average": average, "taken": len(taken), "total": len(ex_out)}
+
+    video_master = lessons_total > 0 and lessons_completed == lessons_total
+    exercise_champion = len(ex_out) > 0 and len(taken) == len(ex_out)
+    perfect = any((e["my_percentage"] or 0) >= 100 for e in taken)
+    course_complete = video_master and exercise_champion
+    earned = {"video_master": video_master, "exercise_champion": exercise_champion,
+              "perfect_score": perfect, "course_complete": course_complete}
+    achievements = [{**b, "earned": earned.get(b["code"], False)} for b in BADGES]
+    return {"course": course, "lessons": lessons, "exercises": ex_out,
+            "grade": grade, "progress": progress, "achievements": achievements}
 
 
 @router.get("/dashboard")
@@ -29,6 +98,14 @@ async def dashboard(user: dict = Depends(student_only)):
     available_to = await db.tryouts.count_documents({"published": True, "kind": {"$ne": "exercise"}})
     materials = await db.materials.count_documents({"visibility": "public"})
     recent = sorted(attempts, key=lambda a: a.get("submitted_at", ""), reverse=True)[:5]
+    badges = []
+    for cid in await _enrolled_course_ids(sid):
+        bundle = await _course_bundle(sid, cid)
+        if not bundle:
+            continue
+        for a in bundle["achievements"]:
+            if a["earned"]:
+                badges.append({"course_title": bundle["course"]["title"], "code": a["code"], "label": a["label"]})
     return {
         "enrollments": enrollments,
         "completed_tryouts": len(attempts),
@@ -36,6 +113,7 @@ async def dashboard(user: dict = Depends(student_only)):
         "available_tryouts": available_to,
         "public_materials": materials,
         "recent_attempts": recent,
+        "badges": badges,
     }
 
 
@@ -81,37 +159,28 @@ async def my_enrollments(user: dict = Depends(student_only)):
 async def course_learn(course_id: str, user: dict = Depends(student_only)):
     if not await db.enrollments.find_one({"course_id": course_id, "student_id": user["id"]}):
         raise HTTPException(status_code=403, detail="Anda belum terdaftar di kursus ini")
-    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
-    if not course:
+    bundle = await _course_bundle(user["id"], course_id)
+    if not bundle:
         raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
-    lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
-    exercises = await db.tryouts.find(
-        {"course_id": course_id, "kind": "exercise", "published": True}, {"_id": 0}
-    ).sort("created_at", 1).to_list(200)
-    ex_ids = [e["id"] for e in exercises]
-    my_attempts = await db.attempts.find(
-        {"student_id": user["id"], "tryout_id": {"$in": ex_ids}}, {"_id": 0, "per_question": 0}
-    ).to_list(500)
-    amap = {a["tryout_id"]: a for a in my_attempts}
-    for ex in exercises:
-        ex["question_count"] = await db.questions.count_documents({"tryout_id": ex["id"]})
-        att = amap.get(ex["id"])
-        ex["attempt_status"] = att["status"] if att else None
-        ex["attempt_id"] = att["id"] if att else None
-        ex["my_percentage"] = att.get("percentage") if att and att["status"] == "submitted" else None
-        ex["my_score"] = att.get("score") if att and att["status"] == "submitted" else None
-        ex["my_max"] = att.get("max_score") if att and att["status"] == "submitted" else None
-    exercises = [e for e in exercises if e.get("question_count", 0) > 0]
-    taken = [a for a in my_attempts if a["status"] == "submitted"]
-    total_points = sum(a.get("score", 0) for a in taken)
-    average = round(sum(a["percentage"] for a in taken) / len(taken), 1) if taken else 0
-    grade = {
-        "total_points": total_points,
-        "average": average,
-        "taken": len(taken),
-        "total": len(exercises),
-    }
-    return {"course": course, "lessons": lessons, "exercises": exercises, "grade": grade}
+    return bundle
+
+
+@router.post("/lessons/{lesson_id}/complete")
+async def complete_lesson(lesson_id: str, body: LessonCompleteBody, user: dict = Depends(student_only)):
+    lesson = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Pelajaran tidak ditemukan")
+    if not await db.enrollments.find_one({"course_id": lesson["course_id"], "student_id": user["id"]}):
+        raise HTTPException(status_code=403, detail="Anda belum terdaftar di kursus ini")
+    await db.lesson_progress.update_one(
+        {"student_id": user["id"], "lesson_id": lesson_id},
+        {"$set": {
+            "id": new_id(), "student_id": user["id"], "course_id": lesson["course_id"],
+            "lesson_id": lesson_id, "completed": body.completed, "completed_at": now_iso(),
+        }},
+        upsert=True,
+    )
+    return {"ok": True, "completed": body.completed}
 
 
 @router.get("/materials")
@@ -163,6 +232,11 @@ async def tryout_detail(tryout_id: str, user: dict = Depends(student_only)):
     if not t:
         raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
     questions = await db.questions.find({"tryout_id": tryout_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    if t.get("kind") == "exercise":
+        random.shuffle(questions)
+        for q in questions:
+            if q.get("options"):
+                random.shuffle(q["options"])
     t["questions"] = [strip_answers(q) for q in questions]
     return t
 
@@ -172,11 +246,18 @@ async def start_attempt(tryout_id: str, user: dict = Depends(student_only)):
     t = await db.tryouts.find_one({"id": tryout_id, "published": True}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
-    existing = await db.attempts.find_one({"tryout_id": tryout_id, "student_id": user["id"]}, {"_id": 0})
-    if existing:
-        if existing["status"] == "submitted":
+    is_exercise = t.get("kind") == "exercise"
+    in_progress = await db.attempts.find_one(
+        {"tryout_id": tryout_id, "student_id": user["id"], "status": "in_progress"}, {"_id": 0}
+    )
+    if in_progress:
+        return in_progress
+    if not is_exercise:
+        submitted = await db.attempts.find_one(
+            {"tryout_id": tryout_id, "student_id": user["id"], "status": "submitted"}, {"_id": 0}
+        )
+        if submitted:
             raise HTTPException(status_code=400, detail="Anda sudah menyelesaikan Try Out ini")
-        return existing
     attempt = {
         "id": new_id(),
         "tryout_id": tryout_id,

@@ -53,6 +53,7 @@ async def startup():
     await db.login_attempts.create_index("identifier")
     await db.favorites.create_index([("tutor_id", 1), ("student_id", 1), ("course_id", 1)], unique=True)
     await db.lessons.create_index("course_id")
+    await db.lesson_progress.create_index([("student_id", 1), ("lesson_id", 1)], unique=True)
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
     await seed_content()
     try:

@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 3 end-to-end verification of 4 new CendekiaLMS features: (1) per-course lesson progress, (2) achievement badges, (3) randomized retake, (4) ZIP bulk material import. Backend: 9/9 pytest passed in /app/backend/tests/test_iter3_features.py — ZIP import creates 2 lessons (mp4 as video_type=upload, pdf as video_type=document) and skips .txt/.__MACOSX; invalid ZIP -> 400; missing course -> 404; /student/courses/{id}/learn returns progress {lessons_completed,lessons_total,percent} + achievements array with exactly the 4 codes {video_master,exercise_champion,perfect_score,course_complete} each with earned bool; POST /student/lessons/{id}/complete upserts lesson_progress and reflects in progress; marking ALL lessons complete flips video_master earned=true; /student/dashboard returns badges[] populated when earned; exercise detail (GET /student/tryouts/ex_utbk_1) shuffles questions AND options across successive calls (kind==exercise branch); POST /student/tryouts/ex_utbk_1/start creates NEW attempts on retake (does NOT reuse a completed submitted attempt) and best-score (max percentage) is surfaced on learn endpoint. Frontend (Playwright): admin login -> /admin/courses/course_phys/content -> 'Impor ZIP' button (import-zip-btn) visible next to 'Tambah Pelajaran' -> dialog (zip-import-dialog) opens with zip-upload input -> uploading .zip with mp4+pdf+txt -> zip-result shows '2 materi berhasil diimpor, 1 berkas dilewati' -> new lessons UI_TEST_video & UI_TEST_doc appear in list (cleaned up via DELETE /api/admin/lessons/{id}, 200x2). Student login -> /student/courses/course_utbk/learn -> lesson-progress bar shows '2/2' -> all 4 badge-<code> tiles present -> clicking complete-lesson_1 toggles state and progress bar updates to '1/2' -> ex_utbk_1 was already taken so ex-retake-ex_utbk_1 + ex-result-ex_utbk_1 both visible (ex-start hidden) -> clicking ex-retake navigates to /student/exam/ex_utbk_1 (new attempt started). Dashboard: dashboard-badges strip is conditionally rendered only when badges are earned — backend already validates the field.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter3_features.py",
+    "/app/test_reports/pytest/iter3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes_admin.py import_zip correctly filters __MACOSX prefix and dotfiles before ext check, uses APP_NAME/uploads path with new_id() so filename collisions are avoided; stores file record in db.files then creates lesson row — good.",
+    "routes_admin.py import_zip: file.read() loads entire zip into memory — for very large ZIPs consider streaming, but acceptable at current scale.",
+    "routes_student.py _course_bundle: perfect_score badge is triggered by any taken exercise with percentage>=100 — matches expected semantics. exercise_champion requires ALL exercises taken (submitted) — good.",
+    "routes_student.py tryout_detail: random.shuffle only for kind=='exercise' — non-exercise tryouts keep stable ordering as expected.",
+    "routes_student.py start_attempt: exercise correctly bypasses the 'already submitted' check so retake creates new attempt (in_progress reused if any) — verified via test_retake_creates_new_attempt_and_best_score_wins.",
+    "routes_student.py dashboard: iterates all enrolled courses and calls _course_bundle for each — could be N+1 in query volume for students with many enrollments; acceptable for MVP.",
+    "CourseLearn.js markComplete toggles by sending !lesson.completed — clicking again on a completed lesson unmarks it. This is INTENDED but may surprise users who expected the button to be one-way; the toast only fires on mark-true. Consider disabling or hiding the toggle after completion (minor UX).",
+    "CourseContent.js onZipFile posts multipart with 'Content-Type: multipart/form-data' header manually — axios normally auto-adds boundary; letting axios handle Content-Type is safer, but this worked in test so no functional issue observed.",
+    "No pagination on _course_bundle exercises/lessons list — assumed low N. Fine for now."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_features.py"],
+  "success_rate": {"backend": "100% (9/9 iter3 + 13/13 iter2 + 38/38 iter1 regression files intact)", "frontend": "100% of critical iter3 flows tested"},
+  "test_credentials": "admin@lms.id/Admin@12345 and siswa@lms.id/Siswa@12345 both worked.",
+  "seed_data_creation": "No permanent seed data added. All ZIP-imported lessons (UI_TEST_video, UI_TEST_doc, TEST_lesson_video, TEST_lesson_doc) were cleaned up via DELETE /api/admin/lessons/{id} within the same test run. Note: the pytest test 'test_video_master_badge_earned_when_all_lessons_complete' left siswa@lms.id's lesson_progress rows with all course_utbk lessons marked completed (this is real user data manipulation but a subsequent UI test toggled lesson_1 back off, so state is not fully restored — main agent may want to reset lesson_progress for student_ahmad on course_utbk if a clean demo state is needed).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Three iteration test files: /app/backend/tests/backend_test.py (iter1), test_iter2_features.py (iter2), test_iter3_features.py (iter3). Run full suite: pytest /app/backend/tests/ -v. ZIP import endpoint accepts multipart 'file' field; supported ext: video={mp4,webm,mov,m4v}, doc={pdf,doc,docx,ppt,pptx}. Randomized retake for kind='exercise' via random.shuffle on questions AND options — deterministic tests should call detail endpoint multiple times and assert order variance. dashboard-badges strip on StudentDashboard renders conditionally (only when at least one badge earned across enrolled courses).",
+  "rca of the issue": "No product bugs found. Minor observation: during test run, marking all lessons complete + then toggling one back off left the seeded student's lesson_progress in a non-pristine state. Non-blocking. All 4 iter3 features work end-to-end."
+}

@@ -7,12 +7,12 @@ import {
   UserCheck, Building2, CheckCircle2, Menu,
 } from "lucide-react";
 import api, { apiError } from "@/lib/api";
-import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MonthCalendar from "@/components/public/MonthCalendar";
 import { toast } from "sonner";
 
 const HERO = "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NzE1MDU5OHww&ixlib=rb-4.1.0&q=85";
@@ -50,8 +50,8 @@ function Header() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
           <a href="#cara" className="hover:text-[#4361EE] transition-colors duration-200">Cara Kerja</a>
           <a href="#portal" className="hover:text-[#4361EE] transition-colors duration-200">Portal</a>
-          <a href="#kalender" className="hover:text-[#4361EE] transition-colors duration-200">Kalender</a>
-          <a href="#berita" className="hover:text-[#4361EE] transition-colors duration-200">Berita</a>
+          <Link to="/kalender" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-kalender">Kalender</Link>
+          <Link to="/berita" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-berita">Berita</Link>
           <a href="#kemitraan" className="hover:text-[#4361EE] transition-colors duration-200">Kemitraan</a>
         </nav>
         <div className="flex items-center gap-2">
@@ -132,16 +132,16 @@ function PartnershipForm() {
 export default function Landing() {
   const [news, setNews] = useState([]);
   const [calendar, setCalendar] = useState([]);
+  const [serverNow, setServerNow] = useState(null);
   const [stats, setStats] = useState({ students: 0, tutors: 0, courses: 0, schools: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
     api.get("/public/news").then((r) => setNews(r.data)).catch(() => {});
     api.get("/public/calendar").then((r) => setCalendar(r.data)).catch(() => {});
+    api.get("/public/time").then((r) => setServerNow(r.data.iso)).catch(() => {});
     api.get("/public/stats").then((r) => setStats(r.data)).catch(() => {});
   }, []);
-
-  const typeColor = { exam: "#EF4444", deadline: "#FF9F1C", holiday: "#10B981", event: "#7C3AED", academic: "#4361EE" };
 
   return (
     <div id="top" className="bg-white text-[#0A1128] overflow-x-hidden">
@@ -233,33 +233,31 @@ export default function Landing() {
       <section className="py-20 bg-[#F4F7FE]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-10">
           <div id="kalender">
-            <div className="flex items-center gap-2 mb-6"><CalendarDays className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Kalender Akademik</h2></div>
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] divide-y divide-[#E2E8F0]" data-testid="landing-calendar">
-              {calendar.length === 0 && <p className="p-6 text-sm text-[#94A3B8]">Belum ada agenda.</p>}
-              {calendar.slice(0, 6).map((c) => (
-                <div key={c.id} className="p-4 flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-lg flex flex-col items-center justify-center text-white shrink-0" style={{ backgroundColor: typeColor[c.type] || "#4361EE" }}>
-                    <span className="text-sm font-bold leading-none">{new Date(c.date).getDate()}</span>
-                    <span className="text-[9px] uppercase">{new Date(c.date).toLocaleDateString("id-ID", { month: "short" })}</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">{c.title}</p>
-                    <p className="text-xs text-[#94A3B8]">{formatDate(c.date)}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Kalender Akademik</h2></div>
+              <Link to="/kalender" className="text-sm font-medium text-[#4361EE] hover:underline inline-flex items-center gap-1" data-testid="landing-calendar-more">Lihat lengkap <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+            <div data-testid="landing-calendar">
+              <MonthCalendar events={calendar} initialDate={serverNow} showList={false} compact />
             </div>
           </div>
           <div id="berita">
-            <div className="flex items-center gap-2 mb-6"><Newspaper className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Berita & Pengumuman</h2></div>
-            <div className="space-y-4" data-testid="landing-news">
-              {news.length === 0 && <p className="text-sm text-[#94A3B8]">Belum ada berita.</p>}
-              {news.slice(0, 4).map((n) => (
-                <div key={n.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:-translate-y-1 transition-transform duration-200">
-                  <span className="inline-block rounded-full bg-[#EEF2FF] text-[#4361EE] px-3 py-1 text-[11px] font-semibold">{n.category}</span>
-                  <h3 className="mt-3 font-semibold">{n.title}</h3>
-                  <p className="mt-1.5 text-sm text-[#475569] line-clamp-2">{n.content}</p>
-                </div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2"><Newspaper className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Berita & Pengumuman</h2></div>
+              <Link to="/berita" className="text-sm font-medium text-[#4361EE] hover:underline inline-flex items-center gap-1" data-testid="landing-news-more">Semua berita <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] divide-y divide-[#E2E8F0]" data-testid="landing-news">
+              {news.length === 0 && <p className="p-6 text-sm text-[#94A3B8]">Belum ada berita.</p>}
+              {news.slice(0, 6).map((n) => (
+                <Link key={n.id} to={`/berita/${n.id}`} data-testid={`landing-news-${n.id}`}
+                  className="group flex items-start gap-3 p-4 hover:bg-[#F8FAFC] transition-colors duration-200">
+                  <span className="mt-1.5 h-2 w-2 rounded-full bg-[#4361EE] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-[#0A1128] group-hover:text-[#4361EE] transition-colors duration-200 leading-snug">{n.title}</h3>
+                    <span className="mt-1 inline-block text-[11px] font-medium text-[#4361EE] opacity-0 group-hover:opacity-100 transition-opacity duration-200">Lihat lebih lanjut →</span>
+                  </div>
+                  <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[10px] font-semibold shrink-0">{n.category}</span>
+                </Link>
               ))}
             </div>
           </div>

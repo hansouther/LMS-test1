@@ -1,10 +1,16 @@
-from fastapi import APIRouter
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, EmailStr
 
 from database import db
 from utils import new_id, now_iso
 
 router = APIRouter(prefix="/api/public", tags=["public"])
+
+# Public read endpoints are cacheable so a CDN/reverse-proxy can absorb heavy
+# read traffic (landing, calendar, news) without hitting the app on every hit.
+_CACHE = "public, max-age=60, stale-while-revalidate=300"
 
 
 class PartnershipBody(BaseModel):
@@ -18,15 +24,32 @@ class PartnershipBody(BaseModel):
 
 
 @router.get("/news")
-async def get_news():
+async def get_news(response: Response):
+    response.headers["Cache-Control"] = _CACHE
     items = await db.news.find({"published": True}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return items
 
 
+@router.get("/news/{news_id}")
+async def get_news_item(news_id: str, response: Response):
+    response.headers["Cache-Control"] = _CACHE
+    item = await db.news.find_one({"id": news_id, "published": True}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Berita tidak ditemukan")
+    return item
+
+
 @router.get("/calendar")
-async def get_calendar():
+async def get_calendar(response: Response):
+    response.headers["Cache-Control"] = _CACHE
     items = await db.calendar_events.find({}, {"_id": 0}).sort("date", 1).to_list(200)
     return items
+
+
+@router.get("/time")
+async def server_time():
+    now = datetime.now(timezone.utc)
+    return {"iso": now.isoformat(), "year": now.year, "month": now.month, "day": now.day}
 
 
 @router.get("/courses")
@@ -42,7 +65,8 @@ async def get_schools():
 
 
 @router.get("/stats")
-async def public_stats():
+async def public_stats(response: Response):
+    response.headers["Cache-Control"] = _CACHE
     students = await db.users.count_documents({"role": "student"})
     tutors = await db.users.count_documents({"role": "tutor"})
     courses = await db.courses.count_documents({"active": True})

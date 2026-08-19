@@ -5,12 +5,15 @@ from typing import List, Optional
 import io
 import csv
 import re
+import zipfile
+import asyncio
 import openpyxl
 
 from database import db
 from utils import new_id, now_iso
 from security import require_roles, hash_password
 from emailer import notify_new_tryout, notify_bid_accepted
+from storage import put_object, MIME_TYPES, APP_NAME
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_only = require_roles("admin")
@@ -592,3 +595,57 @@ async def questions_template(user: dict = Depends(admin_only)):
     )
     return Response(content=csv_text, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=template_soal.csv"})
+
+
+# ---------- Bulk Import Course Materials (ZIP) ----------
+_VIDEO_EXT = {"mp4", "webm", "mov", "m4v"}
+_DOC_EXT = {"pdf", "doc", "docx", "ppt", "pptx"}
+
+
+@router.post("/courses/{course_id}/lessons/import-zip")
+async def import_zip(course_id: str, file: UploadFile = File(...), user: dict = Depends(admin_only)):
+    if not await db.courses.find_one({"id": course_id}):
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    data = await file.read()
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Berkas ZIP tidak valid")
+
+    created, skipped, errors = 0, 0, []
+    order = await db.lessons.count_documents({"course_id": course_id})
+    for name in zf.namelist():
+        base = name.split("/")[-1]
+        if not base or base.startswith(".") or "__MACOSX" in name:
+            continue
+        ext = base.rsplit(".", 1)[-1].lower() if "." in base else ""
+        if ext not in _VIDEO_EXT and ext not in _DOC_EXT:
+            skipped += 1
+            continue
+        try:
+            content = zf.read(name)
+            path = f"{APP_NAME}/uploads/{user['id']}/{new_id()}.{ext}"
+            ct = MIME_TYPES.get(ext, "application/octet-stream")
+            result = await asyncio.to_thread(put_object, path, content, ct)
+        except Exception as e:
+            errors.append(f"{base}: {e}")
+            continue
+        stored_path = result["path"]
+        await db.files.insert_one({
+            "id": new_id(), "storage_path": stored_path, "original_filename": base,
+            "content_type": ct, "size": result.get("size", len(content)),
+            "uploaded_by": user["id"], "is_deleted": False, "created_at": now_iso(),
+        })
+        url = f"/api/files/{stored_path}"
+        order += 1
+        title = base.rsplit(".", 1)[0]
+        if ext in _VIDEO_EXT:
+            doc = {"id": new_id(), "course_id": course_id, "title": title, "description": "Diimpor dari ZIP",
+                   "video_type": "upload", "video_url": url, "attachments": [], "order": order, "created_at": now_iso()}
+        else:
+            doc = {"id": new_id(), "course_id": course_id, "title": title, "description": "Diimpor dari ZIP",
+                   "video_type": "document", "video_url": None,
+                   "attachments": [{"name": base, "url": url, "content_type": ct}], "order": order, "created_at": now_iso()}
+        await db.lessons.insert_one(doc)
+        created += 1
+    return {"created": created, "skipped": skipped, "errors": errors}

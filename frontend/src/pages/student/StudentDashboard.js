@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BookOpen, ClipboardList, Trophy, GraduationCap, ArrowRight, Library, CalendarCheck } from "lucide-react";
+import { BookOpen, ClipboardList, Trophy, GraduationCap, ArrowRight, Library, CalendarCheck, Medal } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/common/PageHeader";
@@ -63,6 +63,21 @@ export default function StudentDashboard() {
               </div>
             ) : <Empty icon={Trophy} title="Belum ada hasil" desc="Kerjakan Try Out pertama Anda untuk melihat nilai di sini." />}
           </div>
+
+          {data.badges?.length > 0 && (
+            <div className="mt-8 rounded-2xl bg-white border border-[#E2E8F0] p-6" data-testid="dashboard-badges">
+              <h3 className="font-semibold text-[#0A1128] mb-4 flex items-center gap-2"><Medal className="h-5 w-5 text-[#FF9F1C]" /> Lencana Pencapaian</h3>
+              <div className="flex flex-wrap gap-3">
+                {data.badges.map((b, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-full bg-[#FFF9F0] border border-[#FFE2B8] px-4 py-2" data-testid={`dash-badge-${b.code}`}>
+                    <Medal className="h-4 w-4 text-[#FF9F1C]" />
+                    <span className="text-sm font-medium text-[#0A1128]">{b.label}</span>
+                    <span className="text-xs text-[#94A3B8]">· {b.course_title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

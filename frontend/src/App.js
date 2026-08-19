@@ -9,6 +9,9 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import CalendarPage from "@/pages/public/CalendarPage";
+import NewsPage from "@/pages/public/NewsPage";
+import NewsDetail from "@/pages/public/NewsDetail";
 
 import StudentDashboard from "@/pages/student/StudentDashboard";
 import LearningRoom from "@/pages/student/LearningRoom";
@@ -52,6 +55,9 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/kalender" element={<CalendarPage />} />
+      <Route path="/berita" element={<NewsPage />} />
+      <Route path="/berita/:id" element={<NewsDetail />} />
 
       {/* Student */}
       <Route element={<ProtectedRoute roles={["student"]} />}>
