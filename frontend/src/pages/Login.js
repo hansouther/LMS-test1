@@ -23,7 +23,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user && user.role) navigate(roleHome(user.role), { replace: true });
+    if (user && user.role) {
+      if (user.status && user.status !== "approved" && user.role !== "admin") navigate("/pending", { replace: true });
+      else navigate(roleHome(user.role), { replace: true });
+    }
   }, [user, navigate]);
 
   const submit = async (e) => {
@@ -33,7 +36,8 @@ export default function Login() {
       const { data } = await api.post("/auth/login", { email, password });
       setUser(data);
       toast.success(`Selamat datang, ${data.name}!`);
-      navigate(roleHome(data.role), { replace: true });
+      if (data.status && data.status !== "approved" && data.role !== "admin") navigate("/pending", { replace: true });
+      else navigate(roleHome(data.role), { replace: true });
     } catch (err) {
       toast.error(apiError(err));
     } finally {
@@ -75,7 +79,7 @@ export default function Login() {
             <span className="font-head font-bold text-lg text-[#0A1128]">CendekiaLMS</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1128]">Masuk ke akun Anda</h1>
-          <p className="mt-2 text-sm text-[#475569]">Belum punya akun siswa? <Link to="/register" className="text-[#4361EE] font-semibold hover:underline">Daftar di sini</Link></p>
+          <p className="mt-2 text-sm text-[#475569]">Belum punya akun siswa? <Link to="/register" className="text-[#4361EE] font-semibold hover:underline">Daftar di sini</Link> · <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="login-link-proctor">Daftar Proktor</Link></p>
 
           <form onSubmit={submit} className="mt-8 space-y-4" data-testid="login-form">
             <div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Users, School, ShieldCheck, GraduationCap, UserCog } from "lucide-react";
+import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -20,19 +20,29 @@ const ROLE_BADGE = {
   tutor: { l: "Tentor", c: "#FF9F1C", bg: "#FFF4E5" },
   proctor: { l: "Proktor", c: "#10B981", bg: "#ECFDF5" },
 };
+const STATUS_BADGE = {
+  pending: { l: "Menunggu", c: "#B45309", bg: "#FEF3C7" },
+  approved: { l: "Terverifikasi", c: "#047857", bg: "#D1FAE5" },
+  rejected: { l: "Ditolak", c: "#B91C1C", bg: "#FEE2E2" },
+};
 const EMPTY = { name: "", email: "", password: "", role: "tutor", phone: "", school_id: "", qualifications: "" };
+const NONE = "none";
 
 export default function ManageUsers() {
   const { data: users, loading, refetch } = useFetch("/admin/users");
   const { data: schools, refetch: refetchSchools } = useFetch("/admin/schools");
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState("pending");
   const [open, setOpen] = useState(false);
   const [schoolOpen, setSchoolOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [schoolForm, setSchoolForm] = useState({ name: "", city: "" });
+  const [edit, setEdit] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
 
-  const list = (users || []).filter((u) => tab === "all" || u.role === tab);
+  const pendingCount = (users || []).filter((u) => (u.status || "approved") === "pending").length;
+  const list = (users || []).filter((u) =>
+    tab === "all" ? true : tab === "pending" ? (u.status || "approved") === "pending" : u.role === tab
+  );
 
   const save = async () => {
     const payload = {
@@ -48,10 +58,21 @@ export default function ManageUsers() {
     try { await api.post("/admin/schools", schoolForm); toast.success("Sekolah ditambahkan"); setSchoolOpen(false); setSchoolForm({ name: "", city: "" }); refetchSchools(); }
     catch (e) { toast.error(apiError(e)); }
   };
+  const quickVerify = async (id, status) => {
+    try { await api.put(`/admin/users/${id}`, { status }); toast.success(status === "approved" ? "Akun disetujui" : "Akun ditolak"); refetch(); }
+    catch (e) { toast.error(apiError(e)); }
+  };
+  const openEdit = (u) => setEdit({ id: u.id, name: u.name, email: u.email, role: u.role, school_id: u.school_id || NONE, status: u.status || "approved", grade: u.grade, goal: u.goal, phone: u.phone, school_name_text: u.school_name_text });
+  const saveEdit = async () => {
+    try {
+      await api.put(`/admin/users/${edit.id}`, { role: edit.role, status: edit.status, school_id: edit.school_id === NONE ? null : edit.school_id });
+      toast.success("Perubahan disimpan"); setEdit(null); refetch();
+    } catch (e) { toast.error(apiError(e)); }
+  };
 
   return (
     <div data-testid="manage-users">
-      <PageHeader title="Pengguna & Sekolah Mitra" subtitle="Kelola akun tentor, proktor, dan siswa serta daftar sekolah mitra."
+      <PageHeader title="Pengguna & Sekolah Mitra" subtitle="Verifikasi akun, atur peran, dan tautkan sekolah. Proktor hanya melihat siswa sekolahnya."
         actions={<div className="flex gap-2">
           <Button variant="outline" onClick={() => setSchoolOpen(true)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="add-school-btn"><School className="h-4 w-4" /> Tambah Sekolah</Button>
           <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-user-btn"><Plus className="h-4 w-4" /> Tambah Pengguna</Button>
@@ -69,6 +90,7 @@ export default function ManageUsers() {
 
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList data-testid="user-tabs">
+          <TabsTrigger value="pending" data-testid="tab-pending">Menunggu {pendingCount > 0 && <span className="ml-1.5 rounded-full bg-[#FEF3C7] text-[#B45309] px-1.5 text-[10px] font-bold">{pendingCount}</span>}</TabsTrigger>
           <TabsTrigger value="all">Semua</TabsTrigger>
           <TabsTrigger value="tutor">Tentor</TabsTrigger>
           <TabsTrigger value="proctor">Proktor</TabsTrigger>
@@ -77,30 +99,53 @@ export default function ManageUsers() {
       </Tabs>
 
       {loading ? <Loading /> : !list.length ? (
-        <Empty icon={Users} title="Tidak ada pengguna" />
+        <Empty icon={tab === "pending" ? Clock : Users} title={tab === "pending" ? "Tidak ada akun menunggu verifikasi" : "Tidak ada pengguna"} />
       ) : (
         <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-[#F4F7FE]">
-                <TableHead>Nama</TableHead>
+                <TableHead>Nama & Detail</TableHead>
                 <TableHead>Peran</TableHead>
-                <TableHead className="hidden md:table-cell">Sekolah / Kualifikasi</TableHead>
-                <TableHead className="w-16"></TableHead>
+                <TableHead className="hidden md:table-cell">Sekolah</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-44 text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {list.map((u) => {
                 const b = ROLE_BADGE[u.role] || ROLE_BADGE.student;
+                const st = STATUS_BADGE[u.status || "approved"];
+                const isPending = (u.status || "approved") === "pending";
                 return (
                   <TableRow key={u.id} data-testid={`user-row-${u.id}`}>
-                    <TableCell><p className="font-medium text-[#0A1128]">{u.name}</p><p className="text-xs text-[#94A3B8]">{u.email}</p></TableCell>
-                    <TableCell><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ color: b.c, backgroundColor: b.bg }}>{b.l}</span></TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-[#475569]">{u.school_name || (u.qualifications?.length ? u.qualifications.join(", ") : "-")}</TableCell>
                     <TableCell>
-                      {u.role !== "admin" && (
-                        <ConfirmButton onConfirm={() => del(u.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-user-${u.id}`}><Trash2 className="h-4 w-4" /></Button>} />
+                      <p className="font-medium text-[#0A1128]">{u.name}</p>
+                      <p className="text-xs text-[#94A3B8]">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
+                      {u.role === "student" && (u.grade || u.goal) && (
+                        <p className="text-[11px] text-[#94A3B8] mt-0.5">{u.grade ? `Kelas: ${u.grade}` : ""}{u.goal ? ` · Target: ${u.goal}` : ""}</p>
                       )}
+                    </TableCell>
+                    <TableCell><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ color: b.c, backgroundColor: b.bg }}>{b.l}</span></TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-[#475569]">
+                      {u.school_name || (u.school_name_text ? <span className="italic text-[#94A3B8]">{u.school_name_text} (belum ditautkan)</span> : (u.qualifications?.length ? u.qualifications.join(", ") : "-"))}
+                    </TableCell>
+                    <TableCell><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ color: st.c, backgroundColor: st.bg }} data-testid={`user-status-${u.id}`}>{st.l}</span></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {isPending && (
+                          <>
+                            <Button size="sm" onClick={() => quickVerify(u.id, "approved")} className="h-8 rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid={`approve-user-${u.id}`}><CheckCircle2 className="h-3.5 w-3.5" /> Setujui</Button>
+                            <Button size="sm" variant="outline" onClick={() => quickVerify(u.id, "rejected")} className="h-8 rounded-full hover:bg-red-50 hover:text-red-600" data-testid={`reject-user-${u.id}`}><XCircle className="h-3.5 w-3.5" /></Button>
+                          </>
+                        )}
+                        {u.role !== "admin" && (
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(u)} className="h-8 w-8 hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-user-${u.id}`}><Settings2 className="h-4 w-4" /></Button>
+                        )}
+                        {u.role !== "admin" && (
+                          <ConfirmButton onConfirm={() => del(u.id)} trigger={<Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50 hover:text-red-600" data-testid={`delete-user-${u.id}`}><Trash2 className="h-4 w-4" /></Button>} />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -109,6 +154,56 @@ export default function ManageUsers() {
           </Table>
         </div>
       )}
+
+      {/* Edit / verify user */}
+      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
+        <DialogContent data-testid="edit-user-dialog">
+          <DialogHeader><DialogTitle>Atur Akun — {edit?.name}</DialogTitle></DialogHeader>
+          {edit && (
+            <div className="space-y-4">
+              <p className="text-xs text-[#94A3B8]">{edit.email}{edit.phone ? ` · ${edit.phone}` : ""}{edit.school_name_text ? ` · Sekolah diajukan: ${edit.school_name_text}` : ""}</p>
+              <div>
+                <Label>Peran</Label>
+                <Select value={edit.role} onValueChange={(v) => setEdit((f) => ({ ...f, role: v }))}>
+                  <SelectTrigger className="mt-1.5" data-testid="edit-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Siswa</SelectItem>
+                    <SelectItem value="tutor">Tentor</SelectItem>
+                    <SelectItem value="proctor">Proktor</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tautkan Sekolah</Label>
+                <Select value={edit.school_id} onValueChange={(v) => setEdit((f) => ({ ...f, school_id: v }))}>
+                  <SelectTrigger className="mt-1.5" data-testid="edit-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Tidak ada —</SelectItem>
+                    {(schools || []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[11px] text-[#94A3B8]">Proktor hanya bisa melihat siswa dari sekolah yang ditautkan.</p>
+              </div>
+              <div>
+                <Label>Status Verifikasi</Label>
+                <Select value={edit.status} onValueChange={(v) => setEdit((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger className="mt-1.5" data-testid="edit-status"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Menunggu</SelectItem>
+                    <SelectItem value="approved">Terverifikasi</SelectItem>
+                    <SelectItem value="rejected">Ditolak</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdit(null)}>Batal</Button>
+            <Button onClick={saveEdit} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-edit-user">Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create user */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -140,6 +235,7 @@ export default function ManageUsers() {
             {form.role === "tutor" && (
               <div><Label>Kualifikasi (pisahkan dengan koma)</Label><Input value={form.qualifications} onChange={set("qualifications")} placeholder="Matematika, Fisika" className="mt-1.5" data-testid="user-quals" /></div>
             )}
+            <p className="text-[11px] text-[#94A3B8]">Akun yang dibuat admin otomatis terverifikasi.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>

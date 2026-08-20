@@ -25,6 +25,16 @@ class RegisterBody(BaseModel):
     password: str
     phone: str | None = None
     school_id: str | None = None
+    grade: str | None = None
+    goal: str | None = None
+
+
+class RegisterProctorBody(BaseModel):
+    name: str          # nama PIC / penanggung jawab
+    email: EmailStr
+    password: str
+    phone: str | None = None
+    school_name: str   # nama sekolah (teks bebas, ditautkan admin saat verifikasi)
 
 
 class LoginBody(BaseModel):
@@ -58,8 +68,35 @@ async def register(body: RegisterBody, response: Response):
         "password_hash": hash_password(body.password),
         "name": body.name,
         "role": "student",
+        "status": "pending",
         "phone": body.phone,
         "school_id": body.school_id,
+        "grade": body.grade,
+        "goal": body.goal,
+        "picture": None,
+        "auth_provider": "password",
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+    await _issue_session(user, response)
+    return _public_user({k: v for k, v in user.items() if k != "_id"})
+
+
+@router.post("/register/proctor")
+async def register_proctor(body: RegisterProctorBody, response: Response):
+    email = body.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    user = {
+        "id": new_id(),
+        "email": email,
+        "password_hash": hash_password(body.password),
+        "name": body.name,
+        "role": "proctor",
+        "status": "pending",
+        "phone": body.phone,
+        "school_id": None,
+        "school_name_text": body.school_name,
         "picture": None,
         "auth_provider": "password",
         "created_at": now_iso(),
@@ -115,8 +152,11 @@ async def google_session(body: GoogleBody, response: Response):
             "password_hash": None,
             "name": data.get("name") or email.split("@")[0],
             "role": "student",
+            "status": "pending",
             "phone": None,
             "school_id": None,
+            "grade": None,
+            "goal": None,
             "picture": data.get("picture"),
             "auth_provider": "google",
             "created_at": now_iso(),

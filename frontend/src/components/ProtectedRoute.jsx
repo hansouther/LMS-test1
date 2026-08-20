@@ -8,6 +8,7 @@ export default function ProtectedRoute({ roles }) {
 
   if (user === null) return <FullScreenLoader label="Memverifikasi sesi..." />;
   if (user === false) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user.role !== "admin" && user.status && user.status !== "approved") return <Navigate to="/pending" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to={roleHome(user.role)} replace />;
   return <Outlet />;
 }

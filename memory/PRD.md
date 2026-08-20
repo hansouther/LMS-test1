@@ -63,6 +63,15 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Berita Terkait**: bagian "Berita Lainnya" di bawah artikel `/berita/:id` (prioritas kategori sama, maks 4) untuk menahan pengunjung menjelajah lebih lama.
 - Verifikasi: sitemap/courses/robots via curl; halaman /kursus, related news, dan OG title/description dinamis via screenshot. Frontend di-restart sekali agar perubahan `public/index.html` & `public/robots.txt` terbaca.
 
+## Implemented — Iterasi 6: Registrasi Lengkap, Verifikasi Akun & Isolasi Sekolah (2026-08-20)
+- **Registrasi Siswa lengkap** (`/register`): nama, kelas, no WhatsApp, asal sekolah (dropdown sekolah terdaftar, wajib), email, kata sandi, target/tujuan. Akun dibuat `status="pending"`.
+- **Registrasi Proktor** (`/register/proktor`): nama sekolah (teks → `school_name_text`), nama PIC, email, WhatsApp, kata sandi. `status="pending"`, `school_id=null` (ditautkan admin).
+- **Sistem Verifikasi**: user baru (siswa/proktor/Google) mulai `pending`; boleh login tetapi diarahkan ke halaman `/pending` (PendingVerification) dan diblokir dari API portal (403 via `require_roles`, admin dikecualikan). Migrasi startup men-set semua akun lama → `approved`.
+- **Admin kelola akun** (ManageUsers): tab "Menunggu" + badge jumlah; tombol cepat Setujui/Tolak; dialog edit untuk ubah role, tautkan/ubah sekolah, ubah status. `PUT /api/admin/users/{id}`. Akun buatan admin auto-approved.
+- **Isolasi sekolah proktor** diperkuat: `_school_students` mengembalikan kosong bila `school_id` None; proktor hanya melihat siswa sekolah yang ditautkan.
+- **Proktor "Kegiatan Pelatihan"** (`/proctor/trainings`): daftar kursus yang diikuti siswa sekolahnya + jumlah peserta + nama siswa. `GET /api/proctor/trainings`.
+- Testing iterasi 6: 14/14 backend + 11/11 UI PASS (iteration_4.json). Tidak ada bug. Data uji dibersihkan; akun demo utuh & tetap berfungsi.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

@@ -26,7 +26,8 @@ export default function AuthCallback() {
         const { data } = await api.post("/auth/google/session", { session_id: sessionId });
         window.history.replaceState(null, "", window.location.pathname);
         setUser(data);
-        navigate(roleHome(data.role), { replace: true });
+        if (data.status && data.status !== "approved" && data.role !== "admin") navigate("/pending", { replace: true });
+        else navigate(roleHome(data.role), { replace: true });
       } catch {
         navigate("/login", { replace: true });
       }

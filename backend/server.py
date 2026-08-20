@@ -56,6 +56,8 @@ async def startup():
     await db.lesson_progress.create_index([("student_id", 1), ("lesson_id", 1)], unique=True)
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
     await seed_content()
+    # Backward-compat: existing accounts (pre-verification feature) are treated as approved
+    await db.users.update_many({"status": {"$exists": False}}, {"$set": {"status": "approved"}})
     try:
         init_storage()
         logger.info("Object storage initialized.")

@@ -283,6 +283,10 @@ export default function Landing() {
                 <li key={f} className="flex items-center gap-3 text-sm text-[#0A1128]"><CheckCircle2 className="h-5 w-5 text-[#10B981]" /> {f}</li>
               ))}
             </ul>
+            <div className="mt-6">
+              <Link to="/register/proktor"><Button className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid="landing-register-proctor">Daftar Akun Proktor <ArrowRight className="h-4 w-4" /></Button></Link>
+              <p className="mt-2 text-xs text-[#94A3B8]">Sekolah mitra dapat langsung membuat akun proktor (aktif setelah verifikasi admin).</p>
+            </div>
           </div>
           <PartnershipForm />
         </div>

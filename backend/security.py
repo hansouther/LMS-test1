@@ -89,5 +89,7 @@ def require_roles(*roles):
     async def _dep(user: dict = Depends(get_current_user)) -> dict:
         if user.get("role") not in roles:
             raise HTTPException(status_code=403, detail="Akses ditolak untuk peran ini")
+        if user.get("role") != "admin" and user.get("status", "approved") != "approved":
+            raise HTTPException(status_code=403, detail="Akun Anda menunggu verifikasi admin")
         return user
     return _dep

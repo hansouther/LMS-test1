@@ -11,6 +11,8 @@ proctor_only = require_roles("proctor")
 
 
 async def _school_students(school_id):
+    if not school_id:
+        return []
     students = await db.users.find(
         {"role": "student", "school_id": school_id}, {"_id": 0, "password_hash": 0}
     ).to_list(500)
@@ -177,6 +179,34 @@ async def analytics(user: dict = Depends(proctor_only)):
 @router.get("/broadcasts")
 async def broadcasts(user: dict = Depends(proctor_only)):
     return await db.broadcasts.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+
+@router.get("/trainings")
+async def trainings(user: dict = Depends(proctor_only)):
+    students = await _school_students(user.get("school_id"))
+    smap = {s["id"]: s["name"] for s in students}
+    student_ids = list(smap.keys())
+    if not student_ids:
+        return []
+    enrolls = await db.enrollments.find({"student_id": {"$in": student_ids}}, {"_id": 0}).to_list(2000)
+    courses = await db.courses.find({}, {"_id": 0}).to_list(500)
+    cmap = {c["id"]: c for c in courses}
+    by_course = {}
+    for e in enrolls:
+        by_course.setdefault(e["course_id"], []).append(e["student_id"])
+    result = []
+    for cid, sids in by_course.items():
+        c = cmap.get(cid, {})
+        result.append({
+            "course_id": cid,
+            "title": c.get("title", "-"),
+            "subject": c.get("subject", "-"),
+            "level": c.get("level", "-"),
+            "participants": len(sids),
+            "students": [smap.get(s, "-") for s in sids],
+        })
+    result.sort(key=lambda r: r["participants"], reverse=True)
+    return result
 
 
 @router.get("/favorites")

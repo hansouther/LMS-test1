@@ -37,6 +37,7 @@ const NAV = {
   proctor: [
     { to: "/proctor", label: "Ringkasan", icon: LayoutDashboard, end: true },
     { to: "/proctor/monitoring", label: "Live Monitoring", icon: MonitorPlay },
+    { to: "/proctor/trainings", label: "Kegiatan Pelatihan", icon: Library },
     { to: "/proctor/analytics", label: "Analitik Performa", icon: BarChart3 },
     { to: "/proctor/reports", label: "Laporan Nilai", icon: Download },
   ],

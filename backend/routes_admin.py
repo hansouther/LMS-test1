@@ -100,6 +100,12 @@ class UserBody(BaseModel):
     qualifications: List[str] = []
 
 
+class UserUpdateBody(BaseModel):
+    role: Optional[str] = None
+    school_id: Optional[str] = None
+    status: Optional[str] = None  # pending | approved | rejected
+
+
 class SchoolBody(BaseModel):
     name: str
     city: Optional[str] = None
@@ -395,6 +401,7 @@ async def create_user(body: UserBody, user: dict = Depends(admin_only)):
         "password_hash": hash_password(body.password),
         "name": body.name,
         "role": body.role,
+        "status": "approved",
         "phone": body.phone,
         "school_id": body.school_id,
         "qualifications": body.qualifications,
@@ -404,6 +411,28 @@ async def create_user(body: UserBody, user: dict = Depends(admin_only)):
     }
     await db.users.insert_one(doc)
     return {"ok": True, "id": doc["id"]}
+
+
+@router.put("/users/{user_id}")
+async def update_user(user_id: str, body: UserUpdateBody, user: dict = Depends(admin_only)):
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
+    updates = {}
+    if body.role is not None:
+        if body.role not in ("admin", "tutor", "proctor", "student"):
+            raise HTTPException(status_code=400, detail="Peran tidak valid")
+        updates["role"] = body.role
+    if body.status is not None:
+        if body.status not in ("pending", "approved", "rejected"):
+            raise HTTPException(status_code=400, detail="Status tidak valid")
+        updates["status"] = body.status
+    if body.school_id is not None:
+        updates["school_id"] = body.school_id or None
+    if not updates:
+        raise HTTPException(status_code=400, detail="Tidak ada perubahan")
+    await db.users.update_one({"id": user_id}, {"$set": updates})
+    return {"ok": True, **updates}
 
 
 @router.delete("/users/{user_id}")

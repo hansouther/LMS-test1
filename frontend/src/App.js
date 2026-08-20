@@ -46,6 +46,9 @@ import ProctorDashboard from "@/pages/proctor/ProctorDashboard";
 import LiveMonitoring from "@/pages/proctor/LiveMonitoring";
 import Analytics from "@/pages/proctor/Analytics";
 import Reports from "@/pages/proctor/Reports";
+import ProctorTrainings from "@/pages/proctor/Trainings";
+import RegisterProctor from "@/pages/RegisterProctor";
+import PendingVerification from "@/pages/PendingVerification";
 
 function AppRoutes() {
   const location = useLocation();
@@ -56,6 +59,8 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/register/proktor" element={<RegisterProctor />} />
+      <Route path="/pending" element={<PendingVerification />} />
       <Route path="/kalender" element={<CalendarPage />} />
       <Route path="/berita" element={<NewsPage />} />
       <Route path="/berita/:id" element={<NewsDetail />} />
@@ -110,6 +115,7 @@ function AppRoutes() {
           <Route path="/proctor" element={<ProctorDashboard />} />
           <Route path="/proctor/monitoring" element={<LiveMonitoring />} />
           <Route path="/proctor/analytics" element={<Analytics />} />
+          <Route path="/proctor/trainings" element={<ProctorTrainings />} />
           <Route path="/proctor/reports" element={<Reports />} />
         </Route>
       </Route>
