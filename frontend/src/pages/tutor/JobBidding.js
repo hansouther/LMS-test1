@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Gavel, Clock, CheckCircle2, Lock, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Gavel, Clock, CheckCircle2, Lock, Send, GraduationCap } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -33,6 +34,12 @@ export default function JobBidding() {
   return (
     <div data-testid="job-bidding">
       <PageHeader title="Job Bidding" subtitle="Ajukan diri untuk slot mengajar terbuka. Sistem memeriksa kualifikasi Anda secara otomatis." />
+
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F4F7FE] px-4 py-3" data-testid="qual-hint">
+        <GraduationCap className="h-5 w-5 text-[#4361EE] shrink-0" />
+        <p className="text-sm text-[#475569] flex-1">Slot terkunci karena kualifikasi belum cocok? Perbarui bidang keahlian Anda dulu.</p>
+        <Link to="/profile" className="text-sm font-semibold text-[#4361EE] hover:underline shrink-0" data-testid="edit-qual-link">Kelola kualifikasi →</Link>
+      </div>
 
       {loading ? <Loading /> : !data?.length ? (
         <Empty icon={Gavel} title="Belum ada slot terbuka" desc="Slot mengajar baru dari admin akan muncul di sini." />

@@ -1,0 +1,59 @@
+{
+  "summary": "Frontend E2E testing of tutor Profile (qualifications + CV) and Job Bidding case-insensitive matching. All required data-testids present and flows work end-to-end. State restored.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/auth/profile", "issue": "Cannot clear cv_url/cv_name because server treats null as 'skip' (uses `is not None` and empty update -> 400 'Tidak ada perubahan'). Users have no UI-only way to remove an uploaded CV once set."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_flows": {
+    "profile_qualifications": {
+      "qualifications-card_present": true,
+      "initial_chips": ["Matematika","Fisika","Kimia"],
+      "case_insensitive_dedupe_on_add": "MATEMATIKA + kimia rejected; count stayed at 3/4 accordingly",
+      "add_via_button_and_Enter_and_comma": "all work",
+      "remove_chip": "works",
+      "save_persists_and_toast": true
+    },
+    "cv_upload": {
+      "cv-empty_initial": true,
+      "cv-upload-btn_and_input_present": true,
+      "pdf_upload_success": "cv-current appears with valid /api/files/... link; success toast shown",
+      "non_pdf_rejection": "Toast mentioning PDF shown (client-side rejection works)"
+    },
+    "job_bidding": {
+      "qual-hint_and_edit-qual-link_present": true,
+      "slot_phys_qualified_with_lowercase_quals": "During test, saved ['fisika','matematika','kimia'] (lowercase) and slot_phys(Fisika) still showed 'Bidding: Menunggu' (seed bid) proving qualification recognized",
+      "informatika_slot_locked": "Shows 'Kualifikasi tidak memenuhi' as expected"
+    },
+    "tutor_dashboard_link": {
+      "note": "Dashboard route is /tutor (not /tutor/dashboard as stated in request); manage-qualifications-link is present at /tutor with href=/profile"
+    }
+  },
+  "state_restoration": {
+    "qualifications_reset_to": ["Matematika","Fisika","Kimia"],
+    "cv_cleared": "cv_url=null, cv_name=null via direct mongo update (frontend PUT cannot clear null per bug above)",
+    "test_bids_created": "None (only viewed seeded bid on slot_phys)"
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: allow clearing CV via PUT /api/auth/profile by accepting an explicit empty string or a separate DELETE endpoint (currently null is treated as no-op and empty update returns 400).",
+    "Doc nit: agent-to-agent context mentions /tutor/dashboard route but actual dashboard route is /tutor. The manage-qualifications-link exists correctly on /tutor."
+  ],
+  "critical_code_review_comments": [
+    "routes_auth.update_profile uses `is not None` for cv_url/cv_name which prevents clearing them; consider sentinel or explicit clear flag.",
+    "Client dedupe and server _clean_quals are both case-insensitive and consistent — good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skip)", "frontend": "100%"},
+  "test_credentials": "tutor@lms.id / Tutor@12345",
+  "seed_data_creation": "None. Restored tutor qualifications and cleared uploaded test CV.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All qualification/CV/bidding flows verified. Dashboard route is /tutor. If retesting CV clear, note backend PUT /auth/profile cannot null out cv_url currently."
+}

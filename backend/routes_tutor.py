@@ -10,6 +10,11 @@ router = APIRouter(prefix="/api/tutor", tags=["tutor"])
 tutor_only = require_roles("tutor")
 
 
+def _qset(lst):
+    """Normalisasi kualifikasi -> set huruf kecil (matching bidding tidak peduli besar/kecil huruf)."""
+    return {str(x).strip().lower() for x in (lst or []) if str(x).strip()}
+
+
 class BidBody(BaseModel):
     message: str | None = None
 
@@ -60,9 +65,9 @@ async def open_slots(user: dict = Depends(tutor_only)):
     slots = await db.teaching_slots.find({"status": "open"}, {"_id": 0}).sort("date", 1).to_list(100)
     my_bids = await db.bids.find({"tutor_id": user["id"]}, {"_id": 0}).to_list(200)
     bidmap = {b["slot_id"]: b for b in my_bids}
-    quals = set(user.get("qualifications", []))
+    quals = _qset(user.get("qualifications"))
     for s in slots:
-        req = set(s.get("required_qualifications", []))
+        req = _qset(s.get("required_qualifications"))
         s["qualified"] = req.issubset(quals) if req else True
         b = bidmap.get(s["id"])
         s["my_bid_status"] = b["status"] if b else None
@@ -74,8 +79,8 @@ async def place_bid(slot_id: str, body: BidBody, user: dict = Depends(tutor_only
     slot = await db.teaching_slots.find_one({"id": slot_id}, {"_id": 0})
     if not slot or slot["status"] != "open":
         raise HTTPException(status_code=400, detail="Slot tidak tersedia untuk bidding")
-    req = set(slot.get("required_qualifications", []))
-    quals = set(user.get("qualifications", []))
+    req = _qset(slot.get("required_qualifications"))
+    quals = _qset(user.get("qualifications"))
     if req and not req.issubset(quals):
         raise HTTPException(status_code=403, detail="Kualifikasi Anda tidak memenuhi syarat slot ini")
     if await db.bids.find_one({"slot_id": slot_id, "tutor_id": user["id"]}):

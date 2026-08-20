@@ -281,6 +281,18 @@ class ProfileBody(BaseModel):
     cv_url: str | None = None
     cv_name: str | None = None
     certificates: list | None = None
+    qualifications: list | None = None
+
+
+def _clean_quals(lst):
+    """Rapikan kualifikasi: strip, buang kosong, dedupe (case-insensitive) sambil pertahankan tampilan asli."""
+    seen, out = set(), []
+    for x in (lst or []):
+        s = str(x).strip()
+        if s and s.lower() not in seen:
+            seen.add(s.lower())
+            out.append(s)
+    return out
 
 
 class ChangePasswordBody(BaseModel):
@@ -310,6 +322,8 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
             updates["cv_name"] = body.cv_name
         if body.certificates is not None:
             updates["certificates"] = body.certificates
+        if body.qualifications is not None:
+            updates["qualifications"] = _clean_quals(body.qualifications)
     if not updates:
         raise HTTPException(status_code=400, detail="Tidak ada perubahan")
     await db.users.update_one({"id": user["id"]}, {"$set": updates})

@@ -107,6 +107,13 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Berkas Tentor untuk verifikasi** (ManageUsers): baris tentor yang punya berkas menampilkan tombol "Berkas" (folder) → dialog berisi CV & sertifikat dengan aksi **Lihat** (buka tab baru) + **Unduh** (blob terautentikasi). Blok berkas juga ada di dialog edit/verifikasi. Komponen `TutorDocs`. Berkas diambil via `GET /api/files/{path}` (butuh login; admin boleh akses).
 - Testing iterasi 12 (iteration_12.json): 10/10 backend + frontend 100% PASS. Tidak ada bug. Data seed dipulihkan (to_3 & 10 akun utuh); tentor uji dihapus.
 
+## Implemented — Iterasi 12: Kualifikasi Tentor Mandiri & Matching Bidding Case-Insensitive (2026-06)
+- **Tentor kelola kualifikasi & CV sendiri** di halaman `/profile`: editor tag "Keahlian & Kualifikasi" (ketik bidang keahlian, Enter/koma untuk menambah, dedupe case-insensitive) + kartu update CV (unggah/ganti PDF). Disimpan via `PUT /api/auth/profile` (field baru `qualifications`, dibersihkan oleh `_clean_quals`).
+- **Job Bidding case-insensitive**: pencocokan `required_qualifications` slot vs `qualifications` tentor kini memakai normalisasi huruf kecil (`_qset` di routes_tutor.py) — "Fisika" = "fisika". Diterapkan di `open_slots` (flag qualified) & `place_bid` (gate 403).
+- Link "Kelola kualifikasi & CV" di dashboard tentor (`/tutor`) dan banner hint di halaman Job Bidding menuju `/profile`.
+- Testing iterasi 13 (iteration_13.json): frontend 100% PASS; backend curl-verified (simpan lowercase+dupe → tersimpan bersih; slot Fisika tetap qualified dengan qual lowercase). Data tentor demo dipulihkan (`['Matematika','Fisika','Kimia']`, cv_url null); 10 akun seed utuh.
+- Catatan minor (belum di-scope): `PUT /auth/profile` belum bisa meng-null-kan cv_url (null dianggap skip) — hanya ganti CV yang didukung.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

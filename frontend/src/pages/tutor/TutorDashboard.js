@@ -49,7 +49,8 @@ export default function TutorDashboard() {
                 ))}
                 {(!data.qualifications || data.qualifications.length === 0) && <p className="text-sm text-[#94A3B8]">Belum ada kualifikasi.</p>}
               </div>
-              <Link to="/tutor/bidding" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-[#4361EE] hover:underline">Lihat slot terbuka →</Link>
+              <Link to="/profile" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#4361EE] hover:underline" data-testid="manage-qualifications-link">Kelola kualifikasi & CV →</Link>
+              <Link to="/tutor/bidding" className="mt-2 block text-sm font-medium text-[#4361EE] hover:underline">Lihat slot terbuka →</Link>
             </div>
           </div>
         </>
