@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock, FileText, Award } from "lucide-react";
+import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock, FileText, Award, Download, FolderOpen } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -29,6 +29,45 @@ const STATUS_BADGE = {
 const EMPTY = { name: "", email: "", password: "", role: "tutor", phone: "", school_id: "", qualifications: "" };
 const NONE = "none";
 
+async function downloadDoc(url, name) {
+  try {
+    const res = await api.get(url.replace(/^\/api/, ""), { responseType: "blob" });
+    const blobUrl = URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement("a");
+    a.href = blobUrl; a.download = name || "berkas"; a.click();
+    URL.revokeObjectURL(blobUrl);
+    toast.success("Berkas diunduh");
+  } catch { toast.error("Gagal mengunduh berkas"); }
+}
+
+function TutorDocs({ user }) {
+  const certs = user.certificates || [];
+  if (!user.cv_url && certs.length === 0)
+    return <p className="text-sm text-[#94A3B8]" data-testid="tutor-docs-empty">Tentor ini belum mengunggah CV atau sertifikat.</p>;
+  return (
+    <div className="space-y-2" data-testid="tutor-docs">
+      {user.cv_url && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2">
+          <span className="flex items-center gap-2 text-sm text-[#0A1128] min-w-0"><FileText className="h-4 w-4 text-[#4361EE] shrink-0" /><span className="truncate">{user.cv_name || "CV Tentor"}</span></span>
+          <span className="flex items-center gap-1 shrink-0">
+            <a href={fileUrl(user.cv_url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#4361EE] hover:underline px-2 py-1" data-testid="tutor-cv-view">Lihat</a>
+            <Button size="sm" variant="outline" className="h-7 rounded-full" onClick={() => downloadDoc(user.cv_url, user.cv_name || "cv.pdf")} data-testid="tutor-cv-download"><Download className="h-3.5 w-3.5" /> Unduh</Button>
+          </span>
+        </div>
+      )}
+      {certs.map((c, i) => (
+        <div key={i} className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2">
+          <span className="flex items-center gap-2 text-sm text-[#0A1128] min-w-0"><Award className="h-4 w-4 text-[#10B981] shrink-0" /><span className="truncate">{c.name || `Sertifikat ${i + 1}`}</span></span>
+          <span className="flex items-center gap-1 shrink-0">
+            <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#4361EE] hover:underline px-2 py-1" data-testid={`tutor-cert-view-${i}`}>Lihat</a>
+            <Button size="sm" variant="outline" className="h-7 rounded-full" onClick={() => downloadDoc(c.url, c.name || `sertifikat-${i + 1}`)} data-testid={`tutor-cert-download-${i}`}><Download className="h-3.5 w-3.5" /> Unduh</Button>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ManageUsers() {
   const { data: users, loading, refetch } = useFetch("/admin/users");
   const { data: schools, refetch: refetchSchools } = useFetch("/admin/schools");
@@ -38,6 +77,7 @@ export default function ManageUsers() {
   const [form, setForm] = useState(EMPTY);
   const [schoolForm, setSchoolForm] = useState({ name: "", city: "" });
   const [edit, setEdit] = useState(null);
+  const [docsUser, setDocsUser] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
 
   const pendingCount = (users || []).filter((u) => (u.status || "approved") === "pending").length;
@@ -140,6 +180,9 @@ export default function ManageUsers() {
                             <Button size="sm" variant="outline" onClick={() => quickVerify(u.id, "rejected")} className="h-8 rounded-full hover:bg-red-50 hover:text-red-600" data-testid={`reject-user-${u.id}`}><XCircle className="h-3.5 w-3.5" /></Button>
                           </>
                         )}
+                        {u.role === "tutor" && (u.cv_url || u.certificates?.length > 0) && (
+                          <Button size="icon" variant="ghost" onClick={() => setDocsUser(u)} className="h-8 w-8 hover:bg-[#FFF4E5] hover:text-[#FF9F1C]" data-testid={`docs-user-${u.id}`} title="Lihat & unduh berkas tentor"><FolderOpen className="h-4 w-4" /></Button>
+                        )}
                         {u.role !== "admin" && (
                           <Button size="icon" variant="ghost" onClick={() => openEdit(u)} className="h-8 w-8 hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-user-${u.id}`}><Settings2 className="h-4 w-4" /></Button>
                         )}
@@ -156,6 +199,23 @@ export default function ManageUsers() {
         </div>
       )}
 
+      {/* Tutor documents (view & download for verification) */}
+      <Dialog open={!!docsUser} onOpenChange={(o) => !o && setDocsUser(null)}>
+        <DialogContent data-testid="tutor-docs-dialog">
+          <DialogHeader><DialogTitle>Berkas Tentor — {docsUser?.name}</DialogTitle></DialogHeader>
+          {docsUser && (
+            <div className="space-y-3">
+              <p className="text-xs text-[#94A3B8]">{docsUser.email}{docsUser.phone ? ` · ${docsUser.phone}` : ""}</p>
+              <TutorDocs user={docsUser} />
+              <p className="text-[11px] text-[#94A3B8]">Tinjau CV & sertifikat sebelum menyetujui akun tentor.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDocsUser(null)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit / verify user */}
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent data-testid="edit-user-dialog">
@@ -163,13 +223,10 @@ export default function ManageUsers() {
           {edit && (
             <div className="space-y-4">
               <p className="text-xs text-[#94A3B8]">{edit.email}{edit.phone ? ` · ${edit.phone}` : ""}{edit.school_name_text ? ` · Sekolah diajukan: ${edit.school_name_text}` : ""}</p>
-              {edit.role === "tutor" && (edit.cv_url || edit.certificates?.length > 0) && (
-                <div className="rounded-lg bg-[#F4F7FE] p-3 space-y-1.5" data-testid="tutor-docs">
-                  <p className="text-xs font-semibold text-[#0A1128]">Berkas Tentor</p>
-                  {edit.cv_url && <a href={fileUrl(edit.cv_url)} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-[#4361EE] hover:underline" data-testid="tutor-cv-link"><FileText className="h-3.5 w-3.5" /> {edit.cv_name || "CV"}</a>}
-                  {(edit.certificates || []).map((c, i) => (
-                    <a key={i} href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-[#10B981] hover:underline" data-testid={`tutor-cert-${i}`}><Award className="h-3.5 w-3.5" /> {c.name || `Sertifikat ${i + 1}`}</a>
-                  ))}
+              {edit.role === "tutor" && (
+                <div className="rounded-lg bg-[#F4F7FE] p-3 space-y-2" data-testid="edit-tutor-docs">
+                  <p className="text-xs font-semibold text-[#0A1128]">Berkas Tentor (untuk verifikasi)</p>
+                  <TutorDocs user={edit} />
                 </div>
               )}
               <div>

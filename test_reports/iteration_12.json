@@ -1,0 +1,26 @@
+{
+  "summary": "Iteration 12 (Bulk Tag Soal + Tutor Docs view/download) tested end-to-end. Backend: 10/10 pytest passing — POST /api/admin/tryouts/{id}/questions/bulk-competency updates only requested question_ids on the given tryout, invalid competency normalizes to 'umum', empty question_ids returns 400, unauth returns 401/403; tutor register + /api/auth/upload-doc (PDF for CV, PNG for cert) + PUT /api/auth/profile persists cv_url/cv_name/certificates; admin can GET /api/files/{path} for both CV (application/pdf) and cert (image/png); unauth GET /api/files is blocked. Frontend: /admin/tryouts/to_3/builder shows bulk-toolbar; select-all selects all 5, deselect clears bar; individual checkboxes toggle bulk-count; choosing 'Umum' from bulk-competency-select and clicking Terapkan updates question-competency-{id} badges + toast 'N soal ditandai Umum'; revert to Numerasi verified. /admin/users shows docs-user-{id} folder button only for tutors WITH docs; opening tutor-docs-dialog renders tutor-cv-view (target=_blank, href=/api/files/…) + tutor-cv-download + tutor-cert-view-0 + tutor-cert-download-0; Unduh click triggered real browser download events for cv.pdf and cert.png (authenticated blob fetch) with toast 'Berkas diundu'. Regression: /admin/analysis still renders with Numerasi/Literasi sections; TryoutBuilder add/edit flow with checkbox column intact. Seed data restored (to_3 competencies q1-3=numerasi, q4-5=literasi) and all TEST_/test_ ephemeral tutors deleted (10 seed users remain).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter12_bulk_and_docs.py",
+    "/app/test_reports/pytest/iter12_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes_admin.bulk_competency silently normalizes any invalid competency value to 'umum' instead of returning 422. For an admin API this could hide client bugs — consider validating against the enum {numerasi, literasi, umum} and returning 400 on unknown values (the singular /questions POST/PUT has the same silent-fallback pattern).",
+    "TryoutBuilder resets the selection set after a successful bulk apply, which forces admins to re-check boxes to do a second bulk edit on the same rows. Minor UX — consider keeping selection until user explicitly clears it.",
+    "The pytest fixture registers tutors with 'TEST_' prefix but /api/auth/register lowercases emails on insert, so the persisted prefix becomes 'test_'. Cleanup by prefix using 'TEST_' would miss leftovers from crashed test runs. Recommend using case-insensitive filter (e.g. regex ^test_) in any bulk-cleanup admin utility.",
+    "routes_files.download sets Cache-Control: private, max-age=3600. If an admin's session ends but the browser still has the file cached, revoked users could hypothetically still see stale docs from disk cache. Consider no-store for sensitive tutor documents."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter12_bulk_and_docs.py (new — 10 tests)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@lms.id / Admin@12345 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "Ephemeral: one tutor via /api/auth/register/tutor with uploaded CV + certificate for admin-view test; DELETED via /api/admin/users/{id} at end. to_3 questions were bulk-toggled to 'umum' during UI test and REVERTED to seed (q1-3=numerasi, q4-5=literasi). Verified: 10 users remain, to_3 competencies match original.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter12 bulk-tag + tutor docs fully working. Backend suite lives at /app/backend/tests/test_iter12_bulk_and_docs.py. Note: bulk-competency endpoint silently normalizes invalid competency to 'umum' (documented as minor code-review). tutor register lowercases email so ephemeral test-tutors created via API end up prefixed 'test_' not 'TEST_' — cleanup must be case-insensitive. TryoutBuilder selection state resets after each successful apply. Seed data is intact.",
+  "rca of the issue": "N/A — no bugs found in this iteration."
+}

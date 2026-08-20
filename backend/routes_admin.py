@@ -97,6 +97,11 @@ class QuestionBody(BaseModel):
     competency: str = "umum"  # numerasi | literasi | umum (AKM)
 
 
+class BulkCompetencyBody(BaseModel):
+    question_ids: List[str]
+    competency: str  # numerasi | literasi | umum
+
+
 class BroadcastBody(BaseModel):
     title: str
     message: str
@@ -429,6 +434,18 @@ async def update_question(question_id: str, body: QuestionBody, user: dict = Dep
 async def delete_question(question_id: str, user: dict = Depends(admin_only)):
     await db.questions.delete_one({"id": question_id})
     return {"ok": True}
+
+
+@router.post("/tryouts/{tryout_id}/questions/bulk-competency")
+async def bulk_competency(tryout_id: str, body: BulkCompetencyBody, user: dict = Depends(admin_only)):
+    comp = body.competency if body.competency in ("numerasi", "literasi", "umum") else "umum"
+    if not body.question_ids:
+        raise HTTPException(status_code=400, detail="Tidak ada soal dipilih")
+    res = await db.questions.update_many(
+        {"tryout_id": tryout_id, "id": {"$in": body.question_ids}},
+        {"$set": {"competency": comp}},
+    )
+    return {"updated": res.modified_count}
 
 
 @router.get("/tryouts/{tryout_id}/results")

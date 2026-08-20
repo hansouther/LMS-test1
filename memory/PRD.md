@@ -102,6 +102,11 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - Komponen bersama `WeaknessReportView.jsx` dipakai kedua portal. Migrasi startup `migrate_analysis()` (idempotent, meta `analysis_seed_v1`) menandai soal demo Numerasi/Literasi & mengisi per_question attempt seed agar laporan punya data.
 - Testing iterasi 11 (iteration_11.json): 15/15 backend + frontend 100% PASS. Tidak ada bug. Data uji dibersihkan; 10 akun seed & to_3 (5 soal) utuh.
 
+## Implemented — Iterasi 11: Tag Soal Massal & Berkas Tentor (2026-06)
+- **Tag Soal Massal** (TryoutBuilder / Kelola Bank Soal): checkbox per soal + "Pilih Semua" + toolbar bulk untuk menandai banyak soal sekaligus sebagai Numerasi/Literasi/Umum tanpa buka satu per satu. Endpoint `POST /api/admin/tryouts/{id}/questions/bulk-competency` (question_ids, competency).
+- **Berkas Tentor untuk verifikasi** (ManageUsers): baris tentor yang punya berkas menampilkan tombol "Berkas" (folder) → dialog berisi CV & sertifikat dengan aksi **Lihat** (buka tab baru) + **Unduh** (blob terautentikasi). Blok berkas juga ada di dialog edit/verifikasi. Komponen `TutorDocs`. Berkas diambil via `GET /api/files/{path}` (butuh login; admin boleh akses).
+- Testing iterasi 12 (iteration_12.json): 10/10 backend + frontend 100% PASS. Tidak ada bug. Data seed dipulihkan (to_3 & 10 akun utuh); tentor uji dihapus.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

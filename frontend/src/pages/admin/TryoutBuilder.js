@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Plus, Trash2, ArrowLeft, HelpCircle, CheckCircle2, X, Upload, FileDown } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, HelpCircle, CheckCircle2, X, Upload, FileDown, Tag } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import { Loading, Empty } from "@/components/common/States";
@@ -39,6 +39,21 @@ export default function TryoutBuilder() {
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
   const fileRef = useRef();
+  const [selected, setSelected] = useState(new Set());
+  const [bulkComp, setBulkComp] = useState("numerasi");
+
+  const toggleSelect = (qid) => setSelected((s) => { const n = new Set(s); n.has(qid) ? n.delete(qid) : n.add(qid); return n; });
+  const allIds = (questions || []).map((q) => q.id);
+  const allSelected = allIds.length > 0 && selected.size === allIds.length;
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allIds));
+  const applyBulk = async () => {
+    try {
+      const { data } = await api.post(`/admin/tryouts/${id}/questions/bulk-competency`, { question_ids: [...selected], competency: bulkComp });
+      toast.success(`${data.updated} soal ditandai ${COMP_LABEL[bulkComp]}`);
+      setSelected(new Set());
+      refetch();
+    } catch (e) { toast.error(apiError(e)); }
+  };
 
   const downloadTemplate = async () => {
     try {
@@ -127,9 +142,30 @@ export default function TryoutBuilder() {
         <Empty icon={HelpCircle} title="Belum ada soal" desc="Tambahkan soal pertama untuk Try Out ini." action={<Button onClick={openNew} className="rounded-full bg-[#4361EE]"><Plus className="h-4 w-4" /> Tambah Soal</Button>} />
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-[#E2E8F0] p-3" data-testid="bulk-toolbar">
+            <label className="flex items-center gap-2 text-sm font-medium text-[#475569] cursor-pointer">
+              <Checkbox checked={allSelected} onCheckedChange={toggleAll} data-testid="select-all-questions" /> Pilih Semua
+            </label>
+            {selected.size > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                <span className="text-sm font-semibold text-[#0A1128]" data-testid="bulk-count">{selected.size} soal dipilih</span>
+                <span className="text-xs text-[#94A3B8]">tandai sebagai</span>
+                <Select value={bulkComp} onValueChange={setBulkComp}>
+                  <SelectTrigger className="h-9 w-36" data-testid="bulk-competency-select"><SelectValue /></SelectTrigger>
+                  <SelectContent>{COMPETENCIES.map((c) => <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button size="sm" onClick={applyBulk} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="apply-bulk-competency"><Tag className="h-4 w-4" /> Terapkan</Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="rounded-full">Batal</Button>
+              </div>
+            ) : (
+              <span className="ml-auto text-xs text-[#94A3B8]">Pilih beberapa soal untuk menandai kompetensi (Numerasi/Literasi) sekaligus.</span>
+            )}
+          </div>
           {questions.map((q, i) => (
-            <div key={q.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`question-${q.id}`}>
-              <div className="flex items-start justify-between gap-4">
+            <div key={q.id} className={`bg-white rounded-xl border p-5 transition-colors duration-200 ${selected.has(q.id) ? "border-[#4361EE] ring-1 ring-[#4361EE]/30" : "border-[#E2E8F0]"}`} data-testid={`question-${q.id}`}>
+              <div className="flex items-start gap-3">
+                <Checkbox checked={selected.has(q.id)} onCheckedChange={() => toggleSelect(q.id)} className="mt-1 shrink-0" data-testid={`select-question-${q.id}`} />
+                <div className="flex-1 flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-xs font-bold">#{i + 1}</span>
@@ -154,6 +190,7 @@ export default function TryoutBuilder() {
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(q)} className="hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-question-${q.id}`}><Plus className="h-4 w-4 rotate-45" /></Button>
                   <ConfirmButton onConfirm={() => del(q.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-question-${q.id}`}><Trash2 className="h-4 w-4" /></Button>} />
+                </div>
                 </div>
               </div>
             </div>
