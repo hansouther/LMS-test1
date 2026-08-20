@@ -30,6 +30,7 @@ import ManageNews from "@/pages/admin/ManageNews";
 import ManageCalendar from "@/pages/admin/ManageCalendar";
 import ManageCourses from "@/pages/admin/ManageCourses";
 import ManageSchedule from "@/pages/admin/ManageSchedule";
+import ClassManage from "@/pages/admin/ClassManage";
 import ManageTryouts from "@/pages/admin/ManageTryouts";
 import TryoutBuilder from "@/pages/admin/TryoutBuilder";
 import TryoutResults from "@/pages/admin/TryoutResults";
@@ -99,6 +100,7 @@ function AppRoutes() {
           <Route path="/admin/courses" element={<ManageCourses />} />
           <Route path="/admin/courses/:id/content" element={<CourseContent />} />
           <Route path="/admin/schedule" element={<ManageSchedule />} />
+          <Route path="/admin/classes" element={<ClassManage />} />
           <Route path="/admin/tryouts" element={<ManageTryouts />} />
           <Route path="/admin/tryouts/:id/builder" element={<TryoutBuilder />} />
           <Route path="/admin/tryouts/:id/results" element={<TryoutResults />} />

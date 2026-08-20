@@ -4,7 +4,7 @@ from typing import Dict, List
 import random
 
 from database import db
-from utils import new_id, now_iso
+from utils import new_id, now_iso, class_sessions
 from security import require_roles
 from grading import strip_answers, grade_attempt
 
@@ -208,7 +208,26 @@ async def schedule(user: dict = Depends(student_only)):
     tmap = {t["id"]: t["name"] for t in tutors}
     for s in slots:
         s["tutor_name"] = tmap.get(s.get("tutor_id"), "-")
+        s["sessions"] = class_sessions(s)
+        s["material_count"] = await db.class_materials.count_documents({"slot_id": s["id"]})
     return slots
+
+
+@router.get("/classes/{slot_id}")
+async def student_class_detail(slot_id: str, user: dict = Depends(student_only)):
+    slot = await db.teaching_slots.find_one({"id": slot_id, "status": "confirmed"}, {"_id": 0})
+    if not slot:
+        raise HTTPException(status_code=404, detail="Kelas tidak ditemukan")
+    course_ids = await _enrolled_course_ids(user["id"])
+    if not (slot.get("open_to_all") or slot.get("course_id") in course_ids):
+        raise HTTPException(status_code=403, detail="Anda tidak terdaftar pada kelas ini")
+    slot["sessions"] = class_sessions(slot)
+    materials = await db.class_materials.find({"slot_id": slot_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    att = await db.attendance.find({"slot_id": slot_id, "student_id": user["id"]}, {"_id": 0}).to_list(200)
+    my_attendance = {a["session_id"]: a["status"] for a in att if a.get("session_id")}
+    tutor = await db.users.find_one({"id": slot.get("tutor_id")}, {"_id": 0, "name": 1})
+    slot["tutor_name"] = tutor["name"] if tutor else "-"
+    return {"slot": slot, "materials": materials, "my_attendance": my_attendance}
 
 
 @router.get("/tryouts")

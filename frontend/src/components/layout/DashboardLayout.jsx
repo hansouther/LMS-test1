@@ -16,6 +16,7 @@ const NAV = {
     { to: "/admin/calendar", label: "Kalender Akademik", icon: CalendarDays },
     { to: "/admin/courses", label: "Kursus", icon: BookOpen },
     { to: "/admin/schedule", label: "Jadwal & Bidding", icon: CalendarClock },
+    { to: "/admin/classes", label: "Kelola Kelas", icon: Library },
     { to: "/admin/tryouts", label: "Bank Soal & Try Out", icon: FileText },
     { to: "/admin/broadcasts", label: "Broadcast Proktor", icon: Radio },
     { to: "/admin/partnerships", label: "Kemitraan", icon: Handshake },

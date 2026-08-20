@@ -51,16 +51,26 @@ class CourseBody(BaseModel):
     active: bool = True
 
 
-class SlotBody(BaseModel):
-    title: str
-    subject: str
+class SessionBody(BaseModel):
+    id: Optional[str] = None
     date: str
     start_time: str
     end_time: str
+    topic: Optional[str] = None
+
+
+class SlotBody(BaseModel):
+    title: str
+    subject: str
     required_qualifications: List[str] = []
     course_id: Optional[str] = None
     open_to_all: bool = False
     notes: Optional[str] = None
+    sessions: List[SessionBody] = []
+    # legacy single-session support
+    date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 
 class TryoutBody(BaseModel):
@@ -229,11 +239,43 @@ async def list_slots(user: dict = Depends(admin_only)):
     return slots
 
 
+def _build_sessions(body):
+    sessions = []
+    for i, s in enumerate(body.sessions):
+        sessions.append({
+            "id": s.id or new_id(),
+            "no": i + 1,
+            "date": s.date,
+            "start_time": s.start_time,
+            "end_time": s.end_time,
+            "topic": s.topic,
+        })
+    if not sessions and body.date:
+        sessions = [{
+            "id": new_id(), "no": 1, "date": body.date,
+            "start_time": body.start_time, "end_time": body.end_time, "topic": body.notes,
+        }]
+    return sessions
+
+
 @router.post("/slots")
 async def create_slot(body: SlotBody, user: dict = Depends(admin_only)):
+    sessions = _build_sessions(body)
+    if not sessions:
+        raise HTTPException(status_code=400, detail="Minimal satu pertemuan diperlukan")
+    first = sessions[0]
     doc = {
         "id": new_id(),
-        **body.model_dump(),
+        "title": body.title,
+        "subject": body.subject,
+        "required_qualifications": body.required_qualifications,
+        "course_id": body.course_id,
+        "open_to_all": body.open_to_all,
+        "notes": body.notes,
+        "sessions": sessions,
+        "date": first["date"],
+        "start_time": first["start_time"],
+        "end_time": first["end_time"],
         "status": "open",
         "tutor_id": None,
         "created_by": user["id"],
@@ -243,10 +285,32 @@ async def create_slot(body: SlotBody, user: dict = Depends(admin_only)):
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
+@router.put("/slots/{slot_id}")
+async def update_slot(slot_id: str, body: SlotBody, user: dict = Depends(admin_only)):
+    slot = await db.teaching_slots.find_one({"id": slot_id})
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot tidak ditemukan")
+    sessions = _build_sessions(body)
+    if not sessions:
+        raise HTTPException(status_code=400, detail="Minimal satu pertemuan diperlukan")
+    first = sessions[0]
+    updates = {
+        "title": body.title, "subject": body.subject,
+        "required_qualifications": body.required_qualifications,
+        "course_id": body.course_id, "open_to_all": body.open_to_all, "notes": body.notes,
+        "sessions": sessions, "date": first["date"],
+        "start_time": first["start_time"], "end_time": first["end_time"],
+    }
+    await db.teaching_slots.update_one({"id": slot_id}, {"$set": updates})
+    return {"ok": True}
+
+
 @router.delete("/slots/{slot_id}")
 async def delete_slot(slot_id: str, user: dict = Depends(admin_only)):
     await db.teaching_slots.delete_one({"id": slot_id})
     await db.bids.delete_many({"slot_id": slot_id})
+    await db.class_materials.delete_many({"slot_id": slot_id})
+    await db.attendance.delete_many({"slot_id": slot_id})
     return {"ok": True}
 
 

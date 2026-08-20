@@ -1,0 +1,37 @@
+{
+  "summary": "Iterasi 8 (Kelas multi-sesi + materi per pertemuan + presensi per pertemuan) tested end-to-end. Backend: 13/13 pytest passed (validation, /classes/mine tutor+admin scope, materials per session with creator_role, attendance persisted per session, student /schedule & /classes/{id}, 403 for non-enrolled, invalid session 404, delete cascade). Frontend: All key UI flows verified — admin creates confirmed slot via API, then via UI admin/schedule loads with session chips, create dialog opens with weekly generator + add/remove session, admin/classes expands 3 sessions and saves material + attendance (no fav-btn for admin), tutor/classes shows own class, student/schedule expands showing 3 sessions + material link + 'Hadir' badge, student is read-only. Cleanup deletion successful (200) — no lingering TEST_ data.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Create Slot dialog", "issues": ["Radix DialogContent missing aria-describedby (accessibility warning in console) — minor a11y"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter8_classes.py",
+    "/app/test_reports/pytest/iter8_results.xml"
+  ],
+  "action_items": [
+    "Optional: add DialogDescription to Buat Kelas/Materi/Presensi dialogs to remove Radix a11y warning."
+  ],
+  "critical_code_review_comments": [
+    "routes_classes.py: DELETE /materials/{material_id} allows admin unconditionally — OK by design (admin manages all).",
+    "utils.class_sessions() correctly synthesizes single session for legacy slots; verified for 3 seed slots.",
+    "Attendance upsert uses composite key (slot_id, session_id, student_id) — presensi tidak bercampur antar pertemuan (verified in test_mark_and_persist_per_session).",
+    "Student /classes/{id} returns 403 for non-enrolled student (verified with rizki@lms.id).",
+    "SlotBody accepts empty sessions[] and empty date — properly rejected with 400 'Minimal satu pertemuan diperlukan'."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter8_classes.py (new)"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% functional; a11y warning only"},
+  "test_credentials": "admin@lms.id/Admin@12345, tutor@lms.id/Tutor@12345, siswa@lms.id/Siswa@12345, rizki@lms.id/Siswa@12345 (non-enrolled probe).",
+  "seed_data_creation": "During tests created TEST_ slots + tutor bid + admin assign + materials + attendance; all cleaned up after tests via DELETE /api/admin/slots/{id} which cascades bids/materials/attendance. 3 seed slots preserved.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression pytest file at /app/backend/tests/test_iter8_classes.py can be re-run with `pytest -o addopts='' backend/tests/test_iter8_classes.py`. Uses REACT_APP_BACKEND_URL from /app/frontend/.env fallback. DatePicker (gen-start-date, session-date-*) is a shadcn calendar popover (not a native input) — Playwright must click the trigger then a day cell; do NOT use page.fill on it. When testing attendance dialog, wait ~1s after opening for roster fetch to complete before asserting att-row-* count or fav-btn presence."
+}

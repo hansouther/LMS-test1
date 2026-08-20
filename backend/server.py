@@ -12,7 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 from database import db, client
 from seed import seed, seed_content
 from storage import init_storage
-import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files
+import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ app.include_router(routes_student.router)
 app.include_router(routes_tutor.router)
 app.include_router(routes_proctor.router)
 app.include_router(routes_files.router)
+app.include_router(routes_classes.router)
 
 
 @app.get("/api/")
@@ -58,6 +59,13 @@ async def startup():
     await seed_content()
     # Backward-compat: existing accounts (pre-verification feature) are treated as approved
     await db.users.update_many({"status": {"$exists": False}}, {"$set": {"status": "approved"}})
+    # Backfill sessions for legacy single-date classes
+    legacy = await db.teaching_slots.find({"sessions": {"$exists": False}, "date": {"$exists": True}}, {"_id": 0}).to_list(500)
+    for sl in legacy:
+        await db.teaching_slots.update_one({"id": sl["id"]}, {"$set": {"sessions": [{
+            "id": f"{sl['id']}__s1", "no": 1, "date": sl.get("date"),
+            "start_time": sl.get("start_time"), "end_time": sl.get("end_time"), "topic": sl.get("notes"),
+        }]}})
     try:
         init_storage()
         logger.info("Object storage initialized.")

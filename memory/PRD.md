@@ -78,6 +78,15 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Edit Profil semua role** (`/profile`, Profile): ubah nama, WhatsApp; siswa juga kelas/target/asal sekolah; proktor nama sekolah. Ubah kata sandi (verifikasi sandi lama; Google set sandi baru). `PUT /api/auth/profile` + `POST /api/auth/change-password`. Diakses via avatar header (header-profile-link) & menu sidebar "Profil Saya" (nav-profile) di semua portal.
 - Testing iterasi 7: 100% backend + 100% frontend PASS (iteration_5.json). Tidak ada bug. Data uji dibersihkan; sandi demo dikembalikan; 10 akun demo utuh.
 
+## Implemented — Iterasi 8: Kelas Multi-Sesi + Materi per Pertemuan (2026-08-20)
+- **Kelas multi-pertemuan** (admin): `ManageSchedule` kini membuat kelas dengan banyak pertemuan (mis. 8) — generator mingguan otomatis + tambah/edit/hapus manual (tiap pertemuan: tanggal, jam, topik). Kursus wajib ditautkan. Model `teaching_slots.sessions[]`; endpoint `POST/PUT /api/admin/slots` (multi-session), DELETE cascade materi+presensi. Backfill sesi untuk slot lama saat startup.
+- **Bidding tetap**: tentor bidding kelas → admin verifikasi & tugaskan (unchanged).
+- **Materi per pertemuan**: tentor & admin menamb/hapus materi tiap pertemuan (judul + deskripsi + tautan + unggah berkas via `/api/upload`). Model `class_materials` (slot_id, session_id).
+- **Presensi per pertemuan**: kehadiran dicatat per sesi (bukan per kelas). Model `attendance` ditambah `session_id`.
+- **Router bersama** `routes_classes.py` (`/api/classes`, role tutor+admin): `/mine`, roster, attendance, materials. Tutor hanya kelasnya; admin semua. Komponen `ClassManagerView` dipakai halaman tutor (`/tutor/classes`) & admin (`/admin/classes`, menu "Kelola Kelas").
+- **Siswa (read-only)**: `StudentSchedule` menampilkan kelas → expand ke tiap pertemuan (topik/jadwal + badge kehadiran + materi tautan/berkas). `GET /api/student/schedule` & `/api/student/classes/{id}` (403 bila tak berhak).
+- Testing iterasi 8: 100% backend (13/13) + frontend fungsional PASS (iteration_6.json). Hanya warning a11y minor (Radix aria-describedby). Data uji dibersihkan; 3 slot seed utuh.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.
