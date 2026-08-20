@@ -15,6 +15,7 @@ from security import require_roles, hash_password
 from emailer import notify_new_tryout, notify_bid_accepted, notify_new_material
 from storage import put_object, MIME_TYPES, APP_NAME
 import notifications
+import analysis
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_only = require_roles("admin")
@@ -93,6 +94,7 @@ class QuestionBody(BaseModel):
     correct_answers: List[str] = []
     points: int = 1
     order: int = 0
+    competency: str = "umum"  # numerasi | literasi | umum (AKM)
 
 
 class BroadcastBody(BaseModel):
@@ -442,6 +444,33 @@ async def tryout_results(tryout_id: str, user: dict = Depends(admin_only)):
     return sorted(attempts, key=lambda a: a.get("percentage", 0), reverse=True)
 
 
+# ---------- Weakness Analysis & Score Export (all schools) ----------
+@router.get("/analysis")
+async def analysis_report(user: dict = Depends(admin_only)):
+    return await analysis.build_report(None)
+
+
+@router.get("/analysis/scores.csv")
+async def analysis_scores_csv(user: dict = Depends(admin_only)):
+    rep = await analysis.build_report(None)
+    return Response(content=analysis.scores_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=nilai_siswa.csv"})
+
+
+@router.get("/analysis/recap.csv")
+async def analysis_recap_csv(user: dict = Depends(admin_only)):
+    rep = await analysis.build_report(None)
+    return Response(content=analysis.recap_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=rekap_kelemahan_siswa.csv"})
+
+
+@router.get("/analysis/items.csv")
+async def analysis_items_csv(user: dict = Depends(admin_only)):
+    rep = await analysis.build_report(None)
+    return Response(content=analysis.items_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=analisis_butir_soal.csv"})
+
+
 # ---------- Broadcasts ----------
 @router.get("/broadcasts")
 async def list_broadcasts(user: dict = Depends(admin_only)):
@@ -655,8 +684,11 @@ def _row_to_question(row: dict, order: int):
         options = []
         if not correct:
             return None, "Kunci esai kosong"
+    comp = str(row.get("competency") or row.get("kompetensi") or "umum").strip().lower()
+    if comp not in ("numerasi", "literasi"):
+        comp = "umum"
     return {"type": t, "text": text, "options": options, "correct_answers": correct,
-            "points": points, "order": order}, None
+            "points": points, "order": order, "competency": comp}, None
 
 
 @router.post("/tryouts/{tryout_id}/questions/import")
@@ -701,11 +733,11 @@ async def import_questions(tryout_id: str, file: UploadFile = File(...), user: d
 @router.get("/questions/template")
 async def questions_template(user: dict = Depends(admin_only)):
     csv_text = (
-        "type,text,option_a,option_b,option_c,option_d,correct,points\n"
-        "single,\"Berapa hasil 2+2?\",3,4,5,6,B,10\n"
-        "multiple,\"Pilih bilangan genap\",2,3,4,5,\"A;C\",10\n"
-        "truefalse,\"Bumi berbentuk bulat\",,,,,benar,10\n"
-        "essay,\"Ibu kota Indonesia?\",,,,,\"jakarta|dki jakarta\",10\n"
+        "type,text,option_a,option_b,option_c,option_d,correct,points,competency\n"
+        "single,\"Berapa hasil 2+2?\",3,4,5,6,B,10,numerasi\n"
+        "multiple,\"Pilih bilangan genap\",2,3,4,5,\"A;C\",10,numerasi\n"
+        "truefalse,\"Bumi berbentuk bulat\",,,,,benar,10,literasi\n"
+        "essay,\"Ibu kota Indonesia?\",,,,,\"jakarta|dki jakarta\",10,literasi\n"
     )
     return Response(content=csv_text, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=template_soal.csv"})

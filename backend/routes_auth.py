@@ -1,7 +1,9 @@
 import os
+import uuid
+import asyncio
 import requests
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, HTTPException, Request, Response, Depends
+from fastapi import APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr
 
 from database import db
@@ -10,6 +12,7 @@ from security import (
     hash_password, verify_password, create_access_token, create_refresh_token,
     set_auth_cookies, clear_auth_cookies, get_current_user, get_jwt_secret,
 )
+from storage import put_object, MIME_TYPES, APP_NAME
 import jwt
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -35,6 +38,13 @@ class RegisterProctorBody(BaseModel):
     password: str
     phone: str | None = None
     school_name: str   # nama sekolah (teks bebas, ditautkan admin saat verifikasi)
+
+
+class RegisterTutorBody(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: str | None = None
 
 
 class LoginBody(BaseModel):
@@ -104,6 +114,66 @@ async def register_proctor(body: RegisterProctorBody, response: Response):
     await db.users.insert_one(user)
     await _issue_session(user, response)
     return _public_user({k: v for k, v in user.items() if k != "_id"})
+
+
+@router.post("/register/tutor")
+async def register_tutor(body: RegisterTutorBody, response: Response):
+    email = body.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    user = {
+        "id": new_id(),
+        "email": email,
+        "password_hash": hash_password(body.password),
+        "name": body.name,
+        "role": "tutor",
+        "status": "pending",
+        "phone": body.phone,
+        "school_id": None,
+        "qualifications": [],
+        "cv_url": None, "cv_name": None, "certificates": [],
+        "picture": None,
+        "auth_provider": "password",
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+    await _issue_session(user, response)
+    return _public_user({k: v for k, v in user.items() if k != "_id"})
+
+
+@router.post("/become-tutor")
+async def become_tutor(user: dict = Depends(get_current_user)):
+    if user["role"] not in ("student", "tutor"):
+        raise HTTPException(status_code=400, detail="Peran akun tidak dapat diubah menjadi tentor")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"role": "tutor", "status": "pending"}})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+    return updated
+
+
+@router.post("/upload-doc")
+async def upload_doc(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "bin"
+    allowed = {"pdf", "png", "jpg", "jpeg"}
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail="Format tidak didukung. Gunakan PDF, PNG, atau JPEG.")
+    data = await file.read()
+    if ext in {"png", "jpg", "jpeg"} and len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Ukuran gambar maksimal 2 MB.")
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Ukuran berkas maksimal 10 MB.")
+    file_id = uuid.uuid4().hex
+    path = f"{APP_NAME}/docs/{user['id']}/{file_id}.{ext}"
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    try:
+        result = await asyncio.to_thread(put_object, path, data, content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gagal mengunggah berkas: {e}")
+    await db.files.insert_one({
+        "id": file_id, "storage_path": result["path"], "original_filename": file.filename,
+        "content_type": content_type, "size": result.get("size", len(data)),
+        "uploaded_by": user["id"], "is_deleted": False, "created_at": now_iso(),
+    })
+    return {"url": f"/api/files/{result['path']}", "name": file.filename, "type": content_type, "size": result.get("size", len(data))}
 
 
 @router.post("/login")
@@ -208,6 +278,9 @@ class ProfileBody(BaseModel):
     goal: str | None = None
     school_id: str | None = None
     school_name_text: str | None = None
+    cv_url: str | None = None
+    cv_name: str | None = None
+    certificates: list | None = None
 
 
 class ChangePasswordBody(BaseModel):
@@ -231,6 +304,12 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
             updates["school_id"] = body.school_id or None
     if user["role"] == "proctor" and body.school_name_text is not None:
         updates["school_name_text"] = body.school_name_text
+    if user["role"] == "tutor":
+        if body.cv_url is not None:
+            updates["cv_url"] = body.cv_url
+            updates["cv_name"] = body.cv_name
+        if body.certificates is not None:
+            updates["certificates"] = body.certificates
     if not updates:
         raise HTTPException(status_code=400, detail="Tidak ada perubahan")
     await db.users.update_one({"id": user["id"]}, {"$set": updates})

@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Newspaper, CalendarDays, BookOpen, CalendarClock, FileText,
   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
-  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck,
+  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2,
 } from "lucide-react";
 import { useAuth, roleLabel } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -19,6 +19,7 @@ const NAV = {
     { to: "/admin/schedule", label: "Jadwal & Bidding", icon: CalendarClock },
     { to: "/admin/classes", label: "Kelola Kelas", icon: Library },
     { to: "/admin/tryouts", label: "Bank Soal & Try Out", icon: FileText },
+    { to: "/admin/analysis", label: "Analisis Nilai", icon: FileBarChart2 },
     { to: "/admin/broadcasts", label: "Broadcast Proktor", icon: Radio },
     { to: "/admin/partnerships", label: "Kemitraan", icon: Handshake },
     { to: "/admin/users", label: "Pengguna & Sekolah", icon: Users },
@@ -43,6 +44,7 @@ const NAV = {
     { to: "/proctor/trainings", label: "Kegiatan Pelatihan", icon: Library },
     { to: "/proctor/attendance", label: "Rekap Kehadiran", icon: ClipboardCheck },
     { to: "/proctor/analytics", label: "Analitik Performa", icon: BarChart3 },
+    { to: "/proctor/weakness", label: "Analisis Kelemahan", icon: Target },
     { to: "/proctor/reports", label: "Laporan Nilai", icon: Download },
   ],
 };

@@ -26,6 +26,15 @@ export default function AuthCallback() {
         const { data } = await api.post("/auth/google/session", { session_id: sessionId });
         window.history.replaceState(null, "", window.location.pathname);
         setUser(data);
+        const intended = localStorage.getItem("intended_role");
+        if (intended === "tutor") {
+          localStorage.removeItem("intended_role");
+          if (data.role !== "tutor") {
+            try { const r = await api.post("/auth/become-tutor"); setUser(r.data); } catch { /* ignore */ }
+          }
+          navigate("/onboarding/tutor", { replace: true });
+          return;
+        }
         if (data.status && data.status !== "approved" && data.role !== "admin") navigate("/pending", { replace: true });
         else navigate(roleHome(data.role), { replace: true });
       } catch {

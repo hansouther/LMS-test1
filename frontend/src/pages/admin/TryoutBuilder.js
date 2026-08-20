@@ -21,8 +21,15 @@ const TYPES = [
   { v: "truefalse", l: "Benar / Salah" },
   { v: "essay", l: "Esai (jawaban teks)" },
 ];
+const COMPETENCIES = [
+  { v: "numerasi", l: "Numerasi" },
+  { v: "literasi", l: "Literasi" },
+  { v: "umum", l: "Umum" },
+];
+const COMP_LABEL = { numerasi: "Numerasi", literasi: "Literasi", umum: "Umum" };
+const COMP_COLOR = { numerasi: "#4361EE", literasi: "#FF9F1C", umum: "#94A3B8" };
 const newOpts = () => [{ id: "o1", text: "" }, { id: "o2", text: "" }, { id: "o3", text: "" }, { id: "o4", text: "" }];
-const EMPTY = { type: "single", text: "", points: 20, options: newOpts(), correct: [], essay: "" };
+const EMPTY = { type: "single", text: "", points: 20, options: newOpts(), correct: [], essay: "", competency: "umum" };
 
 export default function TryoutBuilder() {
   const { id } = useParams();
@@ -64,6 +71,7 @@ export default function TryoutBuilder() {
       options: q.options?.length ? q.options : newOpts(),
       correct: q.type === "essay" ? [] : q.correct_answers,
       essay: q.type === "essay" ? (q.correct_answers || []).join(", ") : "",
+      competency: q.competency || "umum",
     });
     setEditId(q.id); setOpen(true);
   };
@@ -88,7 +96,7 @@ export default function TryoutBuilder() {
       correct_answers = form.essay.split(",").map((s) => s.trim()).filter(Boolean);
       if (!correct_answers.length) return toast.error("Isi kunci jawaban esai");
     }
-    const payload = { type: form.type, text: form.text, options, correct_answers, points: parseInt(form.points || 1, 10), order: 0 };
+    const payload = { type: form.type, text: form.text, options, correct_answers, points: parseInt(form.points || 1, 10), order: 0, competency: form.competency || "umum" };
     try {
       if (editId) await api.put(`/admin/questions/${editId}`, payload);
       else await api.post(`/admin/tryouts/${id}/questions`, payload);
@@ -126,6 +134,7 @@ export default function TryoutBuilder() {
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-xs font-bold">#{i + 1}</span>
                     <span className="text-xs text-[#94A3B8]">{typeLabel(q.type)} · {q.points} poin</span>
+                    <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${COMP_COLOR[q.competency || "umum"]}1A`, color: COMP_COLOR[q.competency || "umum"] }} data-testid={`question-competency-${q.id}`}>{COMP_LABEL[q.competency || "umum"]}</span>
                   </div>
                   <p className="mt-2 text-[#0A1128]">{q.text}</p>
                   <div className="mt-3 space-y-1">
@@ -164,6 +173,13 @@ export default function TryoutBuilder() {
                 </Select>
               </div>
               <div><Label>Poin</Label><Input type="number" value={form.points} onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))} className="mt-1.5" data-testid="question-points" /></div>
+            </div>
+            <div><Label>Kompetensi (AKM)</Label>
+              <Select value={form.competency} onValueChange={(v) => setForm((f) => ({ ...f, competency: v }))}>
+                <SelectTrigger className="mt-1.5" data-testid="question-competency"><SelectValue /></SelectTrigger>
+                <SelectContent>{COMPETENCIES.map((c) => <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-[#94A3B8]">Dipakai untuk laporan kelemahan siswa (Numerasi vs Literasi).</p>
             </div>
             <div><Label>Pertanyaan</Label><Textarea value={form.text} onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))} className="mt-1.5" rows={3} data-testid="question-text" /></div>
 

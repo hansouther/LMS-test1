@@ -1,11 +1,12 @@
 import io
 import csv
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 
 from database import db
 from security import require_roles
 from utils import class_sessions
+import analysis
 
 router = APIRouter(prefix="/api/proctor", tags=["proctor"])
 proctor_only = require_roles("proctor")
@@ -259,3 +260,34 @@ async def favorites(user: dict = Depends(proctor_only)):
         r["student_name"] = smap.get(r["student_id"], "-")
         r["course_title"] = cmap.get(r["course_id"], "-")
     return rows
+
+
+# ---------- Weakness Analysis & Score Export (school-scoped) ----------
+async def _school_student_ids(user):
+    return [s["id"] for s in await _school_students(user.get("school_id"))]
+
+
+@router.get("/analysis")
+async def analysis_report(user: dict = Depends(proctor_only)):
+    return await analysis.build_report(await _school_student_ids(user))
+
+
+@router.get("/analysis/scores.csv")
+async def analysis_scores_csv(user: dict = Depends(proctor_only)):
+    rep = await analysis.build_report(await _school_student_ids(user))
+    return Response(content=analysis.scores_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=nilai_siswa.csv"})
+
+
+@router.get("/analysis/recap.csv")
+async def analysis_recap_csv(user: dict = Depends(proctor_only)):
+    rep = await analysis.build_report(await _school_student_ids(user))
+    return Response(content=analysis.recap_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=rekap_kelemahan_siswa.csv"})
+
+
+@router.get("/analysis/items.csv")
+async def analysis_items_csv(user: dict = Depends(proctor_only)):
+    rep = await analysis.build_report(await _school_student_ids(user))
+    return Response(content=analysis.items_csv(rep), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=analisis_butir_soal.csv"})

@@ -1,0 +1,25 @@
+{
+  "summary": "Iteration 11 (weakness analysis + score export) tested end-to-end. Backend: 15/15 pytest passing — admin /api/admin/analysis returns 7 students globally, proctor /api/proctor/analysis returns 5 students school-scoped (SMA Nusantara 1 only, no leak of Rizki/Maya); all three CSV endpoints (scores/recap/items) return text/csv with correct Indonesian headers including Numerasi/Literasi/Kompetensi/Tren; question competency field persists on create/update; template CSV includes competency column; CSV import stores competency. Frontend: admin /admin/analysis and proctor /proctor/weakness both render summary cards, weakness highlight, subject bars, recap table (correct row counts 7 vs 5), item analysis, and CSV download buttons that trigger real file downloads. TryoutBuilder shows existing competency badges (5 on tryout to_3) and the Tambah Soal dialog exposes the Kompetensi (AKM) Select with Numerasi/Literasi/Umum options. Multi-tenant isolation verified in UI and API.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter11_analysis.py",
+    "/app/test_reports/pytest/iter11_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "analysis.py build_report runs 4 large DB fetches per request without any caching; on large datasets each admin/proctor page hit re-computes everything. Consider caching by (scope,timestamp) or precomputing on submit for scale.",
+    "routes_proctor.reports_csv uses StreamingResponse+iter([buf]) while routes_admin uses Response(content=...). Minor inconsistency, harmless.",
+    "In WeaknessReportView.jsx the download() catch swallows the real error object (bare `catch {}`); adding console.error would help future debugging."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter11_analysis.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@lms.id / Admin@12345, proktor@lms.id / Proktor@12345 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "None persisted. Test created + deleted TEST_iter11 question + 2 imported questions on tryout to_3 (all removed at end).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter11 analysis feature is fully working. Backend regression suite lives at /app/backend/tests/test_iter11_analysis.py (15 tests, all pass). Admin GLOBAL scope = 7 students; Proctor SCOPED = 5 Nusantara students. Do not modify RegisterTutor.js redirect (per iter8). If seed changes are made to demo attempts, expected counts (7/5) and competency_avg values may shift.",
+  "rca of the issue": "N/A - no bugs found in this iteration."
+}

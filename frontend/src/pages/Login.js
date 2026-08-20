@@ -79,7 +79,7 @@ export default function Login() {
             <span className="font-head font-bold text-lg text-[#0A1128]">CendekiaLMS</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1128]">Masuk ke akun Anda</h1>
-          <p className="mt-2 text-sm text-[#475569]">Belum punya akun siswa? <Link to="/register" className="text-[#4361EE] font-semibold hover:underline">Daftar di sini</Link> · <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="login-link-proctor">Daftar Proktor</Link></p>
+          <p className="mt-2 text-sm text-[#475569]">Belum punya akun siswa? <Link to="/register" className="text-[#4361EE] font-semibold hover:underline">Daftar di sini</Link> · <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="login-link-proctor">Daftar Proktor</Link> · <Link to="/register/tentor" className="text-[#FF9F1C] font-semibold hover:underline" data-testid="login-link-tutor">Daftar Tentor</Link></p>
 
           <form onSubmit={submit} className="mt-8 space-y-4" data-testid="login-form">
             <div>

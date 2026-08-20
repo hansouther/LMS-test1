@@ -94,7 +94,7 @@ export default function Register() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Buat Akun <ArrowRight className="h-4 w-4" /></>}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-[#475569]">Perwakilan sekolah? <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="link-register-proctor">Daftar sebagai Proktor</Link></p>
+          <p className="mt-4 text-center text-sm text-[#475569]">Perwakilan sekolah? <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="link-register-proctor">Daftar sebagai Proktor</Link> · Pengajar? <Link to="/register/tentor" className="text-[#FF9F1C] font-semibold hover:underline" data-testid="link-register-tutor">Daftar sebagai Tentor</Link></p>
         </div>
       </div>
     </div>

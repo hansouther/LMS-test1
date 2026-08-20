@@ -285,3 +285,50 @@ async def seed_content():
     ])
 
     await db.meta.insert_one({"key": "seed_content_v1", "at": now_iso()})
+
+
+# ---- Analysis demo: tag competency & backfill per_question for seed attempts ----
+_SEED_COMP = {1: "numerasi", 2: "numerasi", 3: "numerasi", 4: "literasi", 5: "literasi"}
+_SEED_ATTEMPT_PLAN = {
+    "student_demo": {"to_1": [1, 2, 3], "to_2": [1, 2, 3, 4]},
+    "student_budi": {"to_1": [4, 5, 1, 2], "to_2": [4, 5, 1]},
+    "student_siti": {"to_1": [1, 2, 3], "to_2": [1, 2, 3, 4]},
+    "student_andi": {"to_1": [1, 2, 3, 4, 5], "to_2": [1, 2, 3, 4]},
+    "student_dewi": {"to_1": [4, 5], "to_2": [4, 5, 1]},
+    "student_rizki": {"to_1": [1, 2, 3], "to_2": [1, 2, 3, 4]},
+    "student_maya": {"to_1": [4, 5, 1], "to_2": [4, 5]},
+}
+
+
+async def migrate_analysis():
+    """Idempotent: tag demo questions with Numerasi/Literasi and give seed attempts
+    per-question detail so the weakness report has data to display."""
+    if await db.meta.find_one({"key": "analysis_seed_v1"}):
+        return
+    await db.questions.update_many({"competency": {"$exists": False}}, {"$set": {"competency": "umum"}})
+    for tid in ("to_1", "to_2", "to_3"):
+        for n, comp in _SEED_COMP.items():
+            await db.questions.update_one({"id": f"{tid}_q{n}"}, {"$set": {"competency": comp}})
+    await db.questions.update_many({"id": {"$in": ["exq_1", "exq_2", "exq_3"]}}, {"$set": {"competency": "numerasi"}})
+
+    for sid, plan in _SEED_ATTEMPT_PLAN.items():
+        for tid, correct_nums in plan.items():
+            qs = await db.questions.find({"tryout_id": tid}, {"_id": 0}).sort("order", 1).to_list(50)
+            pq, score, max_score = [], 0, 0
+            for q in qs:
+                pts = int(q.get("points", 20))
+                max_score += pts
+                ok = q.get("order", 0) in correct_nums
+                earned = pts if ok else 0
+                score += earned
+                pq.append({
+                    "question_id": q["id"], "type": q["type"], "student_answer": [],
+                    "correct_answers": q.get("correct_answers", []), "points": pts,
+                    "earned": earned, "correct": ok,
+                })
+            pct = round(score / max_score * 100, 2) if max_score else 0
+            await db.attempts.update_one(
+                {"id": f"att_{sid}_{tid}"},
+                {"$set": {"per_question": pq, "score": score, "max_score": max_score, "percentage": float(pct)}},
+            )
+    await db.meta.insert_one({"key": "analysis_seed_v1", "at": now_iso()})

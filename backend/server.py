@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from database import db, client
-from seed import seed, seed_content
+from seed import seed, seed_content, migrate_analysis
 from storage import init_storage
 import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes
 
@@ -57,6 +57,7 @@ async def startup():
     await db.lesson_progress.create_index([("student_id", 1), ("lesson_id", 1)], unique=True)
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
     await seed_content()
+    await migrate_analysis()
     # Backward-compat: existing accounts (pre-verification feature) are treated as approved
     await db.users.update_many({"status": {"$exists": False}}, {"$set": {"status": "approved"}})
     # Backfill sessions for legacy single-date classes

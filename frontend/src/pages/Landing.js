@@ -285,7 +285,8 @@ export default function Landing() {
             </ul>
             <div className="mt-6">
               <Link to="/register/proktor"><Button className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid="landing-register-proctor">Daftar Akun Proktor <ArrowRight className="h-4 w-4" /></Button></Link>
-              <p className="mt-2 text-xs text-[#94A3B8]">Sekolah mitra dapat langsung membuat akun proktor (aktif setelah verifikasi admin).</p>
+              <Link to="/register/tentor" className="ml-2"><Button variant="outline" className="rounded-full border-[#FF9F1C] text-[#FF9F1C] hover:bg-[#FFF4E5]" data-testid="landing-register-tutor">Daftar sebagai Tentor</Button></Link>
+              <p className="mt-2 text-xs text-[#94A3B8]">Sekolah mitra & pengajar dapat membuat akun (aktif setelah verifikasi admin).</p>
             </div>
           </div>
           <PartnershipForm />

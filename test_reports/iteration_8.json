@@ -1,0 +1,37 @@
+{
+  "summary": "Iterasi 10 (Tutor register + onboarding + admin verification): 14/14 backend pytest passed and full frontend E2E flow passes AFTER fixing a critical redirect bug in RegisterTutor.js that immediately sent the just-registered pending tutor to /pending, preventing them from ever reaching /onboarding/tutor to upload CV+certs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin edit-user dialog", "issues": ["Radix warning: Missing Description/aria-describedby on DialogContent (a11y warning, not blocking)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter10_tutor.py",
+    "/app/test_reports/pytest/iter10_results.xml"
+  ],
+  "action_items": [
+    "Review the small patch applied to /app/frontend/src/pages/RegisterTutor.js (redirect tutor pending w/o cv_url to /onboarding/tutor). Consider a more general fix (e.g., only running the redirect useEffect when user was already loaded pre-submit, not for freshly-registered users)."
+  ],
+  "critical_code_review_comments": [
+    "RegisterTutor.js useEffect race: setUser(newTutor) + navigate('/onboarding/tutor') in submit competes with the mount-time useEffect that redirects any pending non-admin to /pending. The useEffect wins because it re-runs on user change after commit. Applied minimal fix routing tutor+pending+no cv_url to /onboarding/tutor. Same latent risk exists in similar pages (Register.js / RegisterProctor.js) — verify.",
+    "DialogContent in ManageUsers.js is missing DialogDescription / aria-describedby (Radix a11y warning).",
+    "AuthContext exposes setUser directly; freshly registered user with cookies set means subsequent /auth/me would return the same object — OK, but there is no re-validation."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/RegisterTutor.js (redirect fix)",
+    "/app/backend/tests/test_iter10_tutor.py (new)"
+  ],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% after fix (was 0% - blocked at onboarding step before fix)"},
+  "test_credentials": "Admin: admin@lms.id / Admin@12345. Created TEST_ tutor accounts were deleted via DELETE /api/admin/users/{id} in fixture/cleanup.",
+  "seed_data_creation": "Only ephemeral TEST_ tutor/student/proctor accounts created and removed at end. No seed/demo data modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iter 10 tutor flow (register/tentor → onboarding → upload CV(pdf) + cert(png<=2MB) → save profile → /pending → admin approves → tutor portal) fully working end-to-end after RegisterTutor.js redirect fix. Backend tests live at /app/backend/tests/test_iter10_tutor.py. Google 'become-tutor' path verified via API (student → become-tutor turns them to tutor pending). Real Google OAuth not executed (needs Emergent session).",
+  "rca of the issue": "RCA: RegisterTutor.js line 18-23 useEffect: on any user state change where role=='tutor' && status=='pending', it navigated to /pending. When submit() called setUser(newTutor)+navigate('/onboarding/tutor'), React committed the new user, the useEffect fired and pushed /pending, overriding the manual navigate. Reproduction: fill and submit /register/tentor with a fresh email → within ~500ms the URL becomes /pending (observed via url polling), skipping onboarding entirely. Mitigation applied: when tutor is pending AND has no cv_url yet, redirect to /onboarding/tutor instead of /pending."
+}

@@ -38,6 +38,7 @@ import ManageBroadcast from "@/pages/admin/ManageBroadcast";
 import ManagePartnerships from "@/pages/admin/ManagePartnerships";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import CourseContent from "@/pages/admin/CourseContent";
+import AdminAnalysis from "@/pages/admin/Analysis";
 
 import TutorDashboard from "@/pages/tutor/TutorDashboard";
 import JobBidding from "@/pages/tutor/JobBidding";
@@ -51,7 +52,10 @@ import Analytics from "@/pages/proctor/Analytics";
 import Reports from "@/pages/proctor/Reports";
 import ProctorTrainings from "@/pages/proctor/Trainings";
 import ProctorAttendance from "@/pages/proctor/Attendance";
+import ProctorWeakness from "@/pages/proctor/WeaknessReport";
 import RegisterProctor from "@/pages/RegisterProctor";
+import RegisterTutor from "@/pages/RegisterTutor";
+import TutorOnboarding from "@/pages/TutorOnboarding";
 import PendingVerification from "@/pages/PendingVerification";
 
 function AppRoutes() {
@@ -64,6 +68,8 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/register/proktor" element={<RegisterProctor />} />
+      <Route path="/register/tentor" element={<RegisterTutor />} />
+      <Route path="/onboarding/tutor" element={<TutorOnboarding />} />
       <Route path="/pending" element={<PendingVerification />} />
       <Route path="/kalender" element={<CalendarPage />} />
       <Route path="/berita" element={<NewsPage />} />
@@ -108,6 +114,7 @@ function AppRoutes() {
           <Route path="/admin/broadcasts" element={<ManageBroadcast />} />
           <Route path="/admin/partnerships" element={<ManagePartnerships />} />
           <Route path="/admin/users" element={<ManageUsers />} />
+          <Route path="/admin/analysis" element={<AdminAnalysis />} />
         </Route>
       </Route>
 
@@ -130,6 +137,7 @@ function AppRoutes() {
           <Route path="/proctor/analytics" element={<Analytics />} />
           <Route path="/proctor/trainings" element={<ProctorTrainings />} />
           <Route path="/proctor/attendance" element={<ProctorAttendance />} />
+          <Route path="/proctor/weakness" element={<ProctorWeakness />} />
           <Route path="/proctor/reports" element={<Reports />} />
         </Route>
       </Route>

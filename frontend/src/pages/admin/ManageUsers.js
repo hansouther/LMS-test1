@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock } from "lucide-react";
+import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock, FileText, Award } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { fileUrl } from "@/lib/media";
 import { toast } from "sonner";
 
 const ROLE_BADGE = {
@@ -62,7 +63,7 @@ export default function ManageUsers() {
     try { await api.put(`/admin/users/${id}`, { status }); toast.success(status === "approved" ? "Akun disetujui" : "Akun ditolak"); refetch(); }
     catch (e) { toast.error(apiError(e)); }
   };
-  const openEdit = (u) => setEdit({ id: u.id, name: u.name, email: u.email, role: u.role, school_id: u.school_id || NONE, status: u.status || "approved", grade: u.grade, goal: u.goal, phone: u.phone, school_name_text: u.school_name_text });
+  const openEdit = (u) => setEdit({ id: u.id, name: u.name, email: u.email, role: u.role, school_id: u.school_id || NONE, status: u.status || "approved", grade: u.grade, goal: u.goal, phone: u.phone, school_name_text: u.school_name_text, cv_url: u.cv_url, cv_name: u.cv_name, certificates: u.certificates || [] });
   const saveEdit = async () => {
     try {
       await api.put(`/admin/users/${edit.id}`, { role: edit.role, status: edit.status, school_id: edit.school_id === NONE ? null : edit.school_id });
@@ -162,6 +163,15 @@ export default function ManageUsers() {
           {edit && (
             <div className="space-y-4">
               <p className="text-xs text-[#94A3B8]">{edit.email}{edit.phone ? ` · ${edit.phone}` : ""}{edit.school_name_text ? ` · Sekolah diajukan: ${edit.school_name_text}` : ""}</p>
+              {edit.role === "tutor" && (edit.cv_url || edit.certificates?.length > 0) && (
+                <div className="rounded-lg bg-[#F4F7FE] p-3 space-y-1.5" data-testid="tutor-docs">
+                  <p className="text-xs font-semibold text-[#0A1128]">Berkas Tentor</p>
+                  {edit.cv_url && <a href={fileUrl(edit.cv_url)} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-[#4361EE] hover:underline" data-testid="tutor-cv-link"><FileText className="h-3.5 w-3.5" /> {edit.cv_name || "CV"}</a>}
+                  {(edit.certificates || []).map((c, i) => (
+                    <a key={i} href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-[#10B981] hover:underline" data-testid={`tutor-cert-${i}`}><Award className="h-3.5 w-3.5" /> {c.name || `Sertifikat ${i + 1}`}</a>
+                  ))}
+                </div>
+              )}
               <div>
                 <Label>Peran</Label>
                 <Select value={edit.role} onValueChange={(v) => setEdit((f) => ({ ...f, role: v }))}>

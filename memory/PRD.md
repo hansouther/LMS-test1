@@ -87,6 +87,21 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Siswa (read-only)**: `StudentSchedule` menampilkan kelas → expand ke tiap pertemuan (topik/jadwal + badge kehadiran + materi tautan/berkas). `GET /api/student/schedule` & `/api/student/classes/{id}` (403 bila tak berhak).
 - Testing iterasi 8: 100% backend (13/13) + frontend fungsional PASS (iteration_6.json). Hanya warning a11y minor (Radix aria-describedby). Data uji dibersihkan; 3 slot seed utuh.
 
+## Implemented — Iterasi 9: Registrasi & Onboarding Tentor (2026-08-20)
+- **Registrasi Tentor** (`/register/tentor`): email/password + login Google. Akun tentor mulai `status="pending"`.
+- **Onboarding Tentor** (`/onboarding/tutor`): unggah CV (PDF wajib) + sertifikat (PDF atau gambar PNG/JPEG). Validasi server-side: gambar sertifikat maks **2 MB** (HTTP 400 bila lebih). Dokumen ditinjau admin sebelum verifikasi.
+- Alur Google "become tutor": akun Google baru bisa dialihkan menjadi tentor pending → onboarding.
+- Admin melihat CV & sertifikat tentor di ManageUsers sebelum approve. Setelah approved, tentor akses portal.
+- Testing iterasi 10 (iteration_8.json): 14/14 backend + frontend 100% (setelah fix redirect RegisterTutor.js: tentor pending tanpa cv_url diarahkan ke /onboarding/tutor, bukan /pending). JANGAN revert fix ini.
+
+## Implemented — Iterasi 10: Analisis Kelemahan Siswa & Ekspor Nilai (2026-06)
+- **Kompetensi soal (AKM)**: field `competency` pada bank soal — Numerasi | Literasi | Umum. Ditambahkan di TryoutBuilder (Select + badge), impor CSV/Excel (kolom `competency`), dan template soal.
+- **Laporan Analisis Kelemahan** (`analysis.py`): agregasi attempt tersubmit menjadi 3 tampilan — `scores` (nilai per Try Out), `recap` (per siswa: rata-rata, mapel terlemah, Numerasi% vs Literasi%, kompetensi terlemah, tren naik/turun), `items` (analisis butir: % benar + tingkat kesulitan Mudah/Sedang/Sulit). Summary: rata-rata kelas, rata Numerasi/Literasi, area terlemah.
+- **Admin (global)** `/admin/analysis` ("Analisis Nilai") — semua sekolah. **Proktor (per sekolah)** `/proctor/weakness` ("Analisis Kelemahan") — hanya siswa sekolahnya (isolasi multi-tenant terverifikasi: admin 7 siswa, proktor 5 siswa Nusantara).
+- **3 Ekspor CSV** untuk pelaporan sekolah: `nilai_siswa.csv`, `rekap_kelemahan_siswa.csv`, `analisis_butir_soal.csv` (header Bahasa Indonesia). Endpoint `GET {/admin|/proctor}/analysis` + `/analysis/{scores,recap,items}.csv`.
+- Komponen bersama `WeaknessReportView.jsx` dipakai kedua portal. Migrasi startup `migrate_analysis()` (idempotent, meta `analysis_seed_v1`) menandai soal demo Numerasi/Literasi & mengisi per_question attempt seed agar laporan punya data.
+- Testing iterasi 11 (iteration_11.json): 15/15 backend + frontend 100% PASS. Tidak ada bug. Data uji dibersihkan; 10 akun seed & to_3 (5 soal) utuh.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.
