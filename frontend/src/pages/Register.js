@@ -44,15 +44,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#F4F7FE]">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#EFF6F8]">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="h-10 w-10 rounded-xl bg-[#4361EE] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
-          <span className="font-head font-bold text-xl text-[#0A1128]">CendekiaLMS</span>
+          <div className="h-10 w-10 rounded-xl bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
+          <span className="font-head font-bold text-xl text-[#0A1128]">Binara LMS</span>
         </Link>
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8">
           <h1 className="text-2xl font-bold text-[#0A1128]">Daftar sebagai Siswa</h1>
-          <p className="mt-2 text-sm text-[#475569]">Sudah punya akun? <Link to="/login" className="text-[#4361EE] font-semibold hover:underline">Masuk</Link></p>
+          <p className="mt-2 text-sm text-[#475569]">Sudah punya akun? <Link to="/login" className="text-[#0E7490] font-semibold hover:underline">Masuk</Link></p>
 
           <form onSubmit={submit} className="mt-6 space-y-4" data-testid="register-form">
             <div>
@@ -90,11 +90,11 @@ export default function Register() {
               <Label className="text-[#0A1128]">Target Bergabung (Tujuan)</Label>
               <Textarea required value={form.goal} onChange={set("goal")} placeholder="Contoh: lolos UTBK ke PTN impian, memperbaiki nilai Matematika..." className="mt-1.5" data-testid="register-goal" />
             </div>
-            <Button type="submit" disabled={loading} className="w-full h-11 rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="register-submit">
+            <Button type="submit" disabled={loading} className="w-full h-11 rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="register-submit">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Buat Akun <ArrowRight className="h-4 w-4" /></>}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-[#475569]">Perwakilan sekolah? <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="link-register-proctor">Daftar sebagai Proktor</Link> · Pengajar? <Link to="/register/tentor" className="text-[#FF9F1C] font-semibold hover:underline" data-testid="link-register-tutor">Daftar sebagai Tentor</Link></p>
+          <p className="mt-4 text-center text-sm text-[#475569]">Perwakilan sekolah? <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="link-register-proctor">Daftar sebagai Proktor</Link> · Pengajar? <Link to="/register/tentor" className="text-[#C9A227] font-semibold hover:underline" data-testid="link-register-tutor">Daftar sebagai Tentor</Link></p>
         </div>
       </div>
     </div>

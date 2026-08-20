@@ -130,7 +130,7 @@ export default function Profile() {
         {/* Profile form */}
         <form onSubmit={saveProfile} className="lg:col-span-2 bg-white rounded-2xl border border-[#E2E8F0] p-6" data-testid="profile-form">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-11 w-11 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center"><UserCog className="h-5 w-5" /></div>
+            <div className="h-11 w-11 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><UserCog className="h-5 w-5" /></div>
             <div>
               <h3 className="font-semibold text-[#0A1128]">Data Diri</h3>
               <p className="text-xs text-[#94A3B8]">Peran: {roleLabel(user.role)} · {user.email}</p>
@@ -162,7 +162,7 @@ export default function Profile() {
             )}
           </div>
           <div className="mt-6">
-            <Button type="submit" disabled={saving} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="profile-save">
+            <Button type="submit" disabled={saving} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="profile-save">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" /> Simpan Perubahan</>}
             </Button>
           </div>
@@ -171,7 +171,7 @@ export default function Profile() {
         {/* Password */}
         <form onSubmit={savePassword} className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit" data-testid="password-form">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-11 w-11 rounded-xl bg-[#FFF4E5] text-[#FF9F1C] flex items-center justify-center"><KeyRound className="h-5 w-5" /></div>
+            <div className="h-11 w-11 rounded-xl bg-[#FBF3DC] text-[#C9A227] flex items-center justify-center"><KeyRound className="h-5 w-5" /></div>
             <h3 className="font-semibold text-[#0A1128]">{hasPassword ? "Ubah Kata Sandi" : "Buat Kata Sandi"}</h3>
           </div>
           <div className="space-y-4">
@@ -182,7 +182,7 @@ export default function Profile() {
             <div><Label>Konfirmasi Kata Sandi</Label><Input type="password" value={pwd.confirm} onChange={(e) => setPwd((p) => ({ ...p, confirm: e.target.value }))} className="mt-1.5 h-11" data-testid="pwd-confirm" /></div>
           </div>
           <div className="mt-6">
-            <Button type="submit" disabled={pwdSaving} variant="outline" className="rounded-full border-[#CBD5E1] hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="pwd-save">
+            <Button type="submit" disabled={pwdSaving} variant="outline" className="rounded-full border-[#CBD5E1] hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="pwd-save">
               {pwdSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Simpan Kata Sandi"}
             </Button>
           </div>
@@ -194,7 +194,7 @@ export default function Profile() {
           {/* Qualifications editor */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6" data-testid="qualifications-card">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center"><GraduationCap className="h-5 w-5" /></div>
+              <div className="h-11 w-11 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><GraduationCap className="h-5 w-5" /></div>
               <div>
                 <h3 className="font-semibold text-[#0A1128]">Keahlian & Kualifikasi</h3>
                 <p className="text-xs text-[#94A3B8]">Ketik bidang keahlian Anda untuk mengikuti Job Bidding.</p>
@@ -209,19 +209,19 @@ export default function Profile() {
                 className="h-11"
                 data-testid="qual-input"
               />
-              <Button type="button" onClick={addQual} variant="outline" className="rounded-full shrink-0 hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="qual-add"><Plus className="h-4 w-4" /> Tambah</Button>
+              <Button type="button" onClick={addQual} variant="outline" className="rounded-full shrink-0 hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="qual-add"><Plus className="h-4 w-4" /> Tambah</Button>
             </div>
             <p className="mt-2 text-[11px] text-[#94A3B8]">Tekan Enter atau koma untuk menambah. Huruf besar/kecil tidak berpengaruh saat pencocokan bidding.</p>
             <div className="mt-4 flex flex-wrap gap-2 min-h-[2.5rem]" data-testid="qual-chips">
               {quals.length ? quals.map((q) => (
-                <span key={q} className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] text-[#4361EE] px-3 py-1.5 text-xs font-semibold" data-testid={`qual-chip-${q}`}>
+                <span key={q} className="inline-flex items-center gap-1.5 rounded-full bg-[#E6F5F8] text-[#0E7490] px-3 py-1.5 text-xs font-semibold" data-testid={`qual-chip-${q}`}>
                   {q}
                   <button type="button" onClick={() => removeQual(q)} className="hover:text-[#EF4444]" data-testid={`qual-remove-${q}`}><X className="h-3.5 w-3.5" /></button>
                 </span>
               )) : <p className="text-sm text-[#94A3B8]">Belum ada kualifikasi. Tambahkan minimal satu keahlian.</p>}
             </div>
             <div className="mt-5">
-              <Button type="button" onClick={saveQuals} disabled={savingQuals} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="qual-save">
+              <Button type="button" onClick={saveQuals} disabled={savingQuals} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="qual-save">
                 {savingQuals ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" /> Simpan Kualifikasi</>}
               </Button>
             </div>
@@ -238,7 +238,7 @@ export default function Profile() {
               </div>
             </div>
             {user.cv_url ? (
-              <a href={fileUrl(user.cv_url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-[#4361EE] hover:bg-[#EEF2FF]" data-testid="cv-current">
+              <a href={fileUrl(user.cv_url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-[#0E7490] hover:bg-[#E6F5F8]" data-testid="cv-current">
                 <FileText className="h-4 w-4 shrink-0" /><span className="truncate">{user.cv_name || "CV Saya"}</span>
               </a>
             ) : (
@@ -255,7 +255,7 @@ export default function Profile() {
           {/* Certificates management */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit" data-testid="certificates-card">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-[#FFF4E5] text-[#FF9F1C] flex items-center justify-center"><Award className="h-5 w-5" /></div>
+              <div className="h-11 w-11 rounded-xl bg-[#FBF3DC] text-[#C9A227] flex items-center justify-center"><Award className="h-5 w-5" /></div>
               <div>
                 <h3 className="font-semibold text-[#0A1128]">Sertifikat</h3>
                 <p className="text-xs text-[#94A3B8]">Tambah/hapus sertifikat (PDF atau gambar, maks 2 MB).</p>
@@ -264,14 +264,14 @@ export default function Profile() {
             <div className="space-y-2" data-testid="certificates-list">
               {certs.length ? certs.map((c, i) => (
                 <div key={i} className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2" data-testid={`cert-item-${i}`}>
-                  <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#4361EE] hover:underline min-w-0"><Award className="h-4 w-4 text-[#FF9F1C] shrink-0" /><span className="truncate">{c.name || `Sertifikat ${i + 1}`}</span></a>
+                  <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#0E7490] hover:underline min-w-0"><Award className="h-4 w-4 text-[#C9A227] shrink-0" /><span className="truncate">{c.name || `Sertifikat ${i + 1}`}</span></a>
                   <button type="button" onClick={() => removeCert(i)} className="text-[#94A3B8] hover:text-[#EF4444] shrink-0" data-testid={`cert-remove-${i}`}><X className="h-4 w-4" /></button>
                 </div>
               )) : <p className="text-sm text-[#94A3B8]" data-testid="certificates-empty">Belum ada sertifikat.</p>}
             </div>
             <input ref={certRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" onChange={onCertChange} data-testid="cert-file-input" />
             <div className="mt-4">
-              <Button type="button" onClick={() => certRef.current?.click()} disabled={uploadingCert} variant="outline" className="rounded-full border-[#CBD5E1] hover:bg-[#FFF4E5] hover:text-[#FF9F1C]" data-testid="cert-upload-btn">
+              <Button type="button" onClick={() => certRef.current?.click()} disabled={uploadingCert} variant="outline" className="rounded-full border-[#CBD5E1] hover:bg-[#FBF3DC] hover:text-[#C9A227]" data-testid="cert-upload-btn">
                 {uploadingCert ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Tambah Sertifikat</>}
               </Button>
             </div>

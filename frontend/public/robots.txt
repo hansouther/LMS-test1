@@ -1,4 +1,4 @@
-# CendekiaLMS robots.txt
+# Binara LMS robots.txt
 User-agent: *
 Allow: /
 

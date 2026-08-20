@@ -114,6 +114,16 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - Testing iterasi 13 (iteration_13.json): frontend 100% PASS; backend curl-verified (simpan lowercase+dupe → tersimpan bersih; slot Fisika tetap qualified dengan qual lowercase). Data tentor demo dipulihkan (`['Matematika','Fisika','Kimia']`, cv_url null); 10 akun seed utuh.
 - Catatan minor (belum di-scope): `PUT /auth/profile` belum bisa meng-null-kan cv_url (null dianggap skip) — hanya ganti CV yang didukung.
 
+## Implemented — Iterasi 14: Rebrand ke "Binara LMS" & Kesiapan Publish (2026-06)
+- **Rebrand nama**: seluruh teks "Cendekia/CendekiaLMS" → **"Binara LMS"** (frontend, index.html/meta, robots.txt, SEO, email). Storage internal `APP_NAME="cendekialms"` sengaja DIBIARKAN (path storage internal, bukan user-facing).
+- **Palet warna Binara** (navy + gold + cyan), diselaraskan dengan binara.site: primary `#4361EE`→`#0E7490` (cyan), hover→`#0B5C74`, aksen `#FF9F1C`→`#C9A227` (gold), navy `#0A1128` dipertahankan; termasuk tint (#E6F5F8, #FBF3DC, dll).
+- **Kesiapan deploy** (deployment_agent: tidak ada blocker):
+  - CORS `server.py` pakai `allow_origin_regex` domain Emergent + `allow_credentials` (tetap aman untuk cookie httponly; TIDAK memakai `*`).
+  - Optimasi N+1: `routes_student._course_bundle` & `/student/tryouts` kini batch (agregasi `$group` + satu query attempts).
+  - Auth redirect Google memakai `window.location.origin` + handler hash global di `App.js` (bukan bug).
+- Testing iterasi 15 (iteration_15.json): frontend regresi 100% PASS — tidak ada teks "Cendekia", semua 4 role login & dashboard normal, palet baru rapi. 10 akun seed utuh.
+- **Status: siap publish.** Sisa WARN dari scan hanya N+1 pada dashboard admin (low-traffic, bounded) — non-blocker.
+
 ## Implemented — Iterasi 13: Kelola Sertifikat di Profil & Rekomendasi Latihan Otomatis (2026-06)
 - **Kelola Sertifikat di Profil** (`/profile`, tentor): kartu "Sertifikat" untuk tambah/hapus sertifikat (PDF atau gambar PNG/JPEG, gambar maks 2 MB) langsung dari profil — tidak hanya saat onboarding. Simpan via `PUT /api/auth/profile` (array `certificates`).
 - **Rekomendasi Latihan otomatis** berdasarkan area terlemah (mapel + Numerasi/Literasi) dari hasil analisis:

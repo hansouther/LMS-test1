@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
 const BID_STATUS = {
-  pending: { l: "Menunggu", c: "#FF9F1C", bg: "#FFF4E5" },
+  pending: { l: "Menunggu", c: "#C9A227", bg: "#FBF3DC" },
   accepted: { l: "Diterima", c: "#10B981", bg: "#ECFDF5" },
   rejected: { l: "Ditolak", c: "#EF4444", bg: "#FEF2F2" },
 };
@@ -35,10 +35,10 @@ export default function JobBidding() {
     <div data-testid="job-bidding">
       <PageHeader title="Job Bidding" subtitle="Ajukan diri untuk slot mengajar terbuka. Sistem memeriksa kualifikasi Anda secara otomatis." />
 
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F4F7FE] px-4 py-3" data-testid="qual-hint">
-        <GraduationCap className="h-5 w-5 text-[#4361EE] shrink-0" />
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 rounded-2xl border border-[#E2E8F0] bg-[#EFF6F8] px-4 py-3" data-testid="qual-hint">
+        <GraduationCap className="h-5 w-5 text-[#0E7490] shrink-0" />
         <p className="text-sm text-[#475569] flex-1">Slot terkunci karena kualifikasi belum cocok? Perbarui bidang keahlian Anda dulu.</p>
-        <Link to="/profile" className="text-sm font-semibold text-[#4361EE] hover:underline shrink-0" data-testid="edit-qual-link">Kelola kualifikasi →</Link>
+        <Link to="/profile" className="text-sm font-semibold text-[#0E7490] hover:underline shrink-0" data-testid="edit-qual-link">Kelola kualifikasi →</Link>
       </div>
 
       {loading ? <Loading /> : !data?.length ? (
@@ -48,7 +48,7 @@ export default function JobBidding() {
           {data.map((s) => (
             <div key={s.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-6 flex flex-col hover:-translate-y-1 transition-transform duration-200" data-testid={`bid-slot-${s.id}`}>
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-[#F4F7FE] px-3 py-1 text-[11px] font-semibold text-[#475569]">{s.subject}</span>
+                <span className="rounded-full bg-[#EFF6F8] px-3 py-1 text-[11px] font-semibold text-[#475569]">{s.subject}</span>
                 <span className="text-xs text-[#94A3B8]">{formatDate(s.date)}</span>
               </div>
               <h3 className="mt-4 font-semibold text-[#0A1128]">{s.title}</h3>
@@ -58,7 +58,7 @@ export default function JobBidding() {
                 <p className="text-xs text-[#94A3B8]">Syarat kualifikasi:</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {s.required_qualifications?.length ? s.required_qualifications.map((q) => (
-                    <span key={q} className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[11px] font-medium">{q}</span>
+                    <span key={q} className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-2.5 py-0.5 text-[11px] font-medium">{q}</span>
                   )) : <span className="text-xs text-[#94A3B8]">Tidak ada</span>}
                 </div>
               </div>
@@ -68,9 +68,9 @@ export default function JobBidding() {
                     Bidding: {BID_STATUS[s.my_bid_status].l}
                   </span>
                 ) : s.qualified ? (
-                  <Button className="w-full rounded-full bg-[#FF9F1C] hover:bg-[#e88f10] text-[#0A1128] font-semibold" onClick={() => setTarget(s)} data-testid={`bid-btn-${s.id}`}><Gavel className="h-4 w-4" /> Ajukan Bidding</Button>
+                  <Button className="w-full rounded-full bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128] font-semibold" onClick={() => setTarget(s)} data-testid={`bid-btn-${s.id}`}><Gavel className="h-4 w-4" /> Ajukan Bidding</Button>
                 ) : (
-                  <span className="w-full text-center rounded-full py-2 text-sm font-medium bg-[#F4F7FE] text-[#94A3B8] flex items-center justify-center gap-1"><Lock className="h-4 w-4" /> Kualifikasi tidak memenuhi</span>
+                  <span className="w-full text-center rounded-full py-2 text-sm font-medium bg-[#EFF6F8] text-[#94A3B8] flex items-center justify-center gap-1"><Lock className="h-4 w-4" /> Kualifikasi tidak memenuhi</span>
                 )}
               </div>
             </div>
@@ -87,7 +87,7 @@ export default function JobBidding() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTarget(null)}>Batal</Button>
-            <Button onClick={submitBid} className="bg-[#FF9F1C] hover:bg-[#e88f10] text-[#0A1128]" data-testid="submit-bid"><Send className="h-4 w-4" /> Kirim Bidding</Button>
+            <Button onClick={submitBid} className="bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128]" data-testid="submit-bid"><Send className="h-4 w-4" /> Kirim Bidding</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

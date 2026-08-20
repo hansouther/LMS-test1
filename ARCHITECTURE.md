@@ -1,4 +1,4 @@
-# CendekiaLMS — Rancangan Arsitektur Sistem (LMS berbasis RBAC)
+# Binara LMS — Rancangan Arsitektur Sistem (LMS berbasis RBAC)
 
 Dokumen ini merangkum arsitektur sistem, skema database (ERD), alur data, dan strategi keamanan untuk platform LMS dengan 5 portal terintegrasi: **Landing Publik, Siswa, Admin, Tentor, Proktor**.
 

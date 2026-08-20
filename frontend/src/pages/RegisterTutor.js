@@ -45,16 +45,16 @@ export default function RegisterTutor() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#F4F7FE]">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#EFF6F8]">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="h-10 w-10 rounded-xl bg-[#FF9F1C] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
-          <span className="font-head font-bold text-xl text-[#0A1128]">CendekiaLMS</span>
+          <div className="h-10 w-10 rounded-xl bg-[#C9A227] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
+          <span className="font-head font-bold text-xl text-[#0A1128]">Binara LMS</span>
         </Link>
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#FFF4E5] text-[#FF9F1C] px-3 py-1 text-xs font-semibold"><BadgeCheck className="h-3.5 w-3.5" /> Portal Tentor / Pengajar</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#FBF3DC] text-[#C9A227] px-3 py-1 text-xs font-semibold"><BadgeCheck className="h-3.5 w-3.5" /> Portal Tentor / Pengajar</span>
           <h1 className="mt-3 text-2xl font-bold text-[#0A1128]">Daftar sebagai Tentor</h1>
-          <p className="mt-2 text-sm text-[#475569]">Bergabung mengajar di CendekiaLMS. Akun aktif setelah CV & sertifikat diverifikasi admin. Sudah punya akun? <Link to="/login" className="text-[#4361EE] font-semibold hover:underline">Masuk</Link></p>
+          <p className="mt-2 text-sm text-[#475569]">Bergabung mengajar di Binara LMS. Akun aktif setelah CV & sertifikat diverifikasi admin. Sudah punya akun? <Link to="/login" className="text-[#0E7490] font-semibold hover:underline">Masuk</Link></p>
 
           <Button variant="outline" onClick={googleRegister} className="w-full h-11 rounded-full border-[#CBD5E1] hover:bg-white mt-6" data-testid="tutor-google-btn">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-4 w-4" /> Daftar dengan Google
@@ -66,11 +66,11 @@ export default function RegisterTutor() {
             <div><Label className="text-[#0A1128]">Email</Label><Input required type="email" value={form.email} onChange={set("email")} placeholder="tentor@email.com" className="mt-1.5 h-11" data-testid="tutor-email" /></div>
             <div><Label className="text-[#0A1128]">No. WhatsApp</Label><Input required value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="tutor-phone" /></div>
             <div><Label className="text-[#0A1128]">Kata Sandi</Label><Input required type="password" value={form.password} onChange={set("password")} placeholder="Minimal 6 karakter" className="mt-1.5 h-11" data-testid="tutor-password" /></div>
-            <Button type="submit" disabled={loading} className="w-full h-11 rounded-full bg-[#FF9F1C] hover:bg-[#e88f10] text-[#0A1128]" data-testid="tutor-submit">
+            <Button type="submit" disabled={loading} className="w-full h-11 rounded-full bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128]" data-testid="tutor-submit">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Lanjut ke Unggah Berkas <ArrowRight className="h-4 w-4" /></>}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-[#475569]">Mendaftar sebagai siswa? <Link to="/register" className="text-[#4361EE] font-semibold hover:underline">Daftar Siswa</Link></p>
+          <p className="mt-4 text-center text-sm text-[#475569]">Mendaftar sebagai siswa? <Link to="/register" className="text-[#0E7490] font-semibold hover:underline">Daftar Siswa</Link></p>
         </div>
       </div>
     </div>

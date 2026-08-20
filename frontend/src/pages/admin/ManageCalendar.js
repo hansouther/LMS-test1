@@ -16,9 +16,9 @@ import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
 const TYPES = [
-  { v: "academic", l: "Akademik", c: "#4361EE" },
+  { v: "academic", l: "Akademik", c: "#0E7490" },
   { v: "exam", l: "Ujian", c: "#EF4444" },
-  { v: "deadline", l: "Tenggat", c: "#FF9F1C" },
+  { v: "deadline", l: "Tenggat", c: "#C9A227" },
   { v: "holiday", l: "Libur", c: "#10B981" },
   { v: "event", l: "Acara", c: "#7C3AED" },
 ];
@@ -36,13 +36,13 @@ export default function ManageCalendar() {
     catch (e) { toast.error(apiError(e)); }
   };
   const del = async (id) => { try { await api.delete(`/admin/calendar/${id}`); toast.success("Agenda dihapus"); refetch(); } catch (e) { toast.error(apiError(e)); } };
-  const color = (t) => TYPES.find((x) => x.v === t)?.c || "#4361EE";
+  const color = (t) => TYPES.find((x) => x.v === t)?.c || "#0E7490";
   const label = (t) => TYPES.find((x) => x.v === t)?.l || t;
 
   return (
     <div data-testid="manage-calendar">
       <PageHeader title="Kalender Akademik" subtitle="Sinkronkan agenda global yang tampil di landing page dan seluruh portal."
-        actions={<Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-event-btn"><Plus className="h-4 w-4" /> Tambah Agenda</Button>} />
+        actions={<Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-event-btn"><Plus className="h-4 w-4" /> Tambah Agenda</Button>} />
 
       {loading ? <Loading /> : !data?.length ? (
         <Empty icon={CalendarDays} title="Belum ada agenda" />
@@ -84,7 +84,7 @@ export default function ManageCalendar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-event">Simpan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-event">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

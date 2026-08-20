@@ -12,7 +12,7 @@ export default function ProctorDashboard() {
   const { data: favorites } = useFetch("/proctor/favorites");
 
   const quick = [
-    ["Live Monitoring", "/proctor/monitoring", MonitorPlay, "#4361EE"],
+    ["Live Monitoring", "/proctor/monitoring", MonitorPlay, "#0E7490"],
     ["Analitik Performa", "/proctor/analytics", BarChart3, "#7C3AED"],
     ["Laporan Nilai", "/proctor/reports", Download, "#10B981"],
   ];
@@ -24,8 +24,8 @@ export default function ProctorDashboard() {
       {loading ? <Loading /> : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard icon={Users} label="Total Siswa" value={data.total_students} accent="#4361EE" testid="stat-students" />
-            <StatCard icon={ClipboardCheck} label="Total Pengerjaan" value={data.total_attempts} accent="#FF9F1C" testid="stat-attempts" />
+            <StatCard icon={Users} label="Total Siswa" value={data.total_students} accent="#0E7490" testid="stat-students" />
+            <StatCard icon={ClipboardCheck} label="Total Pengerjaan" value={data.total_attempts} accent="#C9A227" testid="stat-attempts" />
             <StatCard icon={Trophy} label="Rata-rata Nilai" value={`${data.avg_score}`} hint="dari 100" accent="#10B981" testid="stat-avg" />
             <StatCard icon={Activity} label="Aktif Sekarang" value={data.active_now} hint="sedang mengerjakan" accent="#7C3AED" testid="stat-active" />
           </div>
@@ -43,7 +43,7 @@ export default function ProctorDashboard() {
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6">
-              <h3 className="font-semibold text-[#0A1128] mb-3 flex items-center gap-2"><Radio className="h-5 w-5 text-[#4361EE]" /> Informasi dari Admin</h3>
+              <h3 className="font-semibold text-[#0A1128] mb-3 flex items-center gap-2"><Radio className="h-5 w-5 text-[#0E7490]" /> Informasi dari Admin</h3>
               {broadcasts?.length ? (
                 <div className="space-y-3 max-h-72 overflow-y-auto">
                   {broadcasts.map((b) => (
@@ -62,15 +62,15 @@ export default function ProctorDashboard() {
           </div>
 
           <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-6">
-            <h3 className="font-semibold text-[#0A1128] mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-[#FF9F1C]" fill="#FF9F1C" /> Siswa Unggulan (Favorit Tentor)</h3>
+            <h3 className="font-semibold text-[#0A1128] mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-[#C9A227]" fill="#C9A227" /> Siswa Unggulan (Favorit Tentor)</h3>
             <p className="text-sm text-[#94A3B8] mb-4">Siswa yang ditandai tentor memiliki peluang tinggi untuk berhasil.</p>
             {favorites?.length ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {favorites.map((f) => (
                   <div key={f.id} className="rounded-xl border border-[#E2E8F0] p-4" data-testid={`fav-${f.id}`}>
-                    <div className="flex items-center gap-2"><Star className="h-4 w-4 text-[#FF9F1C]" fill="#FF9F1C" /><p className="font-semibold text-sm text-[#0A1128]">{f.student_name}</p></div>
+                    <div className="flex items-center gap-2"><Star className="h-4 w-4 text-[#C9A227]" fill="#C9A227" /><p className="font-semibold text-sm text-[#0A1128]">{f.student_name}</p></div>
                     <p className="text-xs text-[#94A3B8] mt-1">{f.course_title} · oleh {f.tutor_name}</p>
-                    {f.note && <p className="mt-2 text-sm text-[#475569] rounded-lg bg-[#FFF9F0] p-2 italic">"{f.note}"</p>}
+                    {f.note && <p className="mt-2 text-sm text-[#475569] rounded-lg bg-[#FBF6E9] p-2 italic">"{f.note}"</p>}
                   </div>
                 ))}
               </div>

@@ -17,7 +17,7 @@ export default function TutorCalendar() {
         <div className="grid sm:grid-cols-2 gap-5">
           {data.map((s) => (
             <div key={s.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5 flex items-center gap-5" data-testid={`cal-${s.id}`}>
-              <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-[#4361EE] to-[#7C3AED] text-white flex flex-col items-center justify-center shrink-0">
+              <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-[#0E7490] to-[#7C3AED] text-white flex flex-col items-center justify-center shrink-0">
                 <span className="text-xl font-bold leading-none">{new Date(s.date).getDate()}</span>
                 <span className="text-[10px] uppercase">{new Date(s.date).toLocaleDateString("id-ID", { month: "short" })}</span>
               </div>

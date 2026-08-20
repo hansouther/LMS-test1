@@ -62,8 +62,8 @@ function SidebarContent({ items, onNavigate }) {
           className={({ isActive }) =>
             `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
               isActive
-                ? "bg-[#4361EE] text-white shadow-sm shadow-[#4361EE]/30"
-                : "text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]"
+                ? "bg-[#0E7490] text-white shadow-sm shadow-[#0E7490]/30"
+                : "text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"
             }`
           }
         >
@@ -78,11 +78,11 @@ function SidebarContent({ items, onNavigate }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2.5 px-5 h-16 border-b border-[#E2E8F0]">
-      <div className="h-9 w-9 rounded-xl bg-[#4361EE] flex items-center justify-center shadow-md shadow-[#4361EE]/30">
+      <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center shadow-md shadow-[#0E7490]/30">
         <GraduationCap className="h-5 w-5 text-white" />
       </div>
       <div className="leading-tight">
-        <p className="font-head font-bold text-[#0A1128] text-[15px]">CendekiaLMS</p>
+        <p className="font-head font-bold text-[#0A1128] text-[15px]">Binara LMS</p>
         <p className="text-[10px] uppercase tracking-widest text-[#94A3B8]">Learning System</p>
       </div>
     </div>
@@ -107,7 +107,7 @@ function StudentBell() {
   return (
     <Popover onOpenChange={onOpen}>
       <PopoverTrigger asChild>
-        <button className="relative p-2 rounded-lg hover:bg-[#EEF2FF] text-[#475569] transition-colors duration-200" data-testid="student-bell" title="Notifikasi">
+        <button className="relative p-2 rounded-lg hover:bg-[#E6F5F8] text-[#475569] transition-colors duration-200" data-testid="student-bell" title="Notifikasi">
           <Bell className="h-5 w-5" />
           {unread > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid="student-bell-badge">{unread > 99 ? "99+" : unread}</span>}
         </button>
@@ -118,7 +118,7 @@ function StudentBell() {
           {items.length === 0 ? (
             <p className="text-sm text-[#94A3B8] text-center py-8">Belum ada notifikasi</p>
           ) : items.map((n) => (
-            <div key={n.id} className={`p-3 border-b border-[#F1F5F9] ${!n.read ? "bg-[#F4F7FE]" : ""}`} data-testid={`notif-${n.id}`}>
+            <div key={n.id} className={`p-3 border-b border-[#F1F5F9] ${!n.read ? "bg-[#EFF6F8]" : ""}`} data-testid={`notif-${n.id}`}>
               <p className="text-sm font-medium text-[#0A1128]">{n.title}</p>
               {n.body && <p className="text-xs text-[#475569] mt-0.5">{n.body}</p>}
             </div>
@@ -142,7 +142,7 @@ function AdminBell() {
   }, []);
 
   return (
-    <button onClick={() => navigate("/admin/users")} className="relative p-2 rounded-lg hover:bg-[#EEF2FF] text-[#475569] transition-colors duration-200" data-testid="admin-bell" title="Pendaftaran menunggu verifikasi">
+    <button onClick={() => navigate("/admin/users")} className="relative p-2 rounded-lg hover:bg-[#E6F5F8] text-[#475569] transition-colors duration-200" data-testid="admin-bell" title="Pendaftaran menunggu verifikasi">
       <Bell className="h-5 w-5" />
       {count > 0 && (
         <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid="admin-bell-badge">{count > 99 ? "99+" : count}</span>
@@ -170,13 +170,13 @@ export default function DashboardLayout() {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#F4F7FE] flex">
+    <div className="min-h-screen bg-[#EFF6F8] flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-white border-r border-[#E2E8F0] flex-col fixed inset-y-0 z-30">
         <Brand />
         <SidebarContent items={items} />
         <div className="p-3 border-t border-[#E2E8F0] space-y-1">
-          <NavLink to="/profile" data-testid="nav-profile" className={({ isActive }) => `w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${isActive ? "bg-[#EEF2FF] text-[#4361EE]" : "text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]"}`}>
+          <NavLink to="/profile" data-testid="nav-profile" className={({ isActive }) => `w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${isActive ? "bg-[#E6F5F8] text-[#0E7490]" : "text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"}`}>
             <UserCog className="h-[18px] w-[18px]" /> Profil Saya
           </NavLink>
           <button
@@ -196,7 +196,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-3">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <button className="lg:hidden p-2 rounded-lg hover:bg-[#EEF2FF] text-[#475569]" data-testid="mobile-menu-button">
+                <button className="lg:hidden p-2 rounded-lg hover:bg-[#E6F5F8] text-[#475569]" data-testid="mobile-menu-button">
                   <Menu className="h-5 w-5" />
                 </button>
               </SheetTrigger>
@@ -204,7 +204,7 @@ export default function DashboardLayout() {
                 <Brand />
                 <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} />
                 <div className="p-3 border-t border-[#E2E8F0] space-y-1">
-                  <NavLink to="/profile" onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]">
+                  <NavLink to="/profile" onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]">
                     <UserCog className="h-[18px] w-[18px]" /> Profil Saya
                   </NavLink>
                   <button
@@ -225,7 +225,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-3">
             {user?.role === "admin" && <AdminBell />}
             {user?.role === "student" && <StudentBell />}
-            <Link to="/profile" className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#EEF2FF] transition-colors duration-200" data-testid="header-profile-link">
+            <Link to="/profile" className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#E6F5F8] transition-colors duration-200" data-testid="header-profile-link">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-[#0A1128] leading-tight">{user?.name}</p>
                 <p className="text-xs text-[#94A3B8]">{user?.email}</p>
@@ -233,7 +233,7 @@ export default function DashboardLayout() {
               {user?.picture ? (
                 <img src={user.picture} alt="avatar" className="h-9 w-9 rounded-full object-cover border border-[#E2E8F0]" />
               ) : (
-                <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center text-sm font-bold">
+                <div className="h-9 w-9 rounded-full bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center text-sm font-bold">
                   {initials}
                 </div>
               )}

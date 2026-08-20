@@ -90,7 +90,7 @@ export default function CourseContent() {
 
   return (
     <div data-testid="course-content">
-      <Button variant="ghost" onClick={() => navigate("/admin/courses")} className="mb-3 text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
+      <Button variant="ghost" onClick={() => navigate("/admin/courses")} className="mb-3 text-[#475569] hover:text-[#0E7490] hover:bg-[#E6F5F8]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
       {loading ? <Loading /> : (
         <>
           <div className="mb-8">
@@ -100,17 +100,17 @@ export default function CourseContent() {
 
           {/* Lessons */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-[#0A1128] flex items-center gap-2"><Video className="h-5 w-5 text-[#4361EE]" /> Video Pembelajaran</h2>
+            <h2 className="font-semibold text-[#0A1128] flex items-center gap-2"><Video className="h-5 w-5 text-[#0E7490]" /> Video Pembelajaran</h2>
             <div className="flex gap-2">
-              <Button onClick={() => { setZipResult(null); setZipOpen(true); }} variant="outline" className="rounded-full border-[#CBD5E1] text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="import-zip-btn"><FileArchive className="h-4 w-4" /> Impor ZIP</Button>
-              <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-lesson-btn"><Plus className="h-4 w-4" /> Tambah Pelajaran</Button>
+              <Button onClick={() => { setZipResult(null); setZipOpen(true); }} variant="outline" className="rounded-full border-[#CBD5E1] text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="import-zip-btn"><FileArchive className="h-4 w-4" /> Impor ZIP</Button>
+              <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-lesson-btn"><Plus className="h-4 w-4" /> Tambah Pelajaran</Button>
             </div>
           </div>
           {data.lessons.length === 0 ? <Empty icon={Video} title="Belum ada pelajaran" /> : (
             <div className="space-y-3 mb-10">
               {data.lessons.map((l) => (
                 <div key={l.id} className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex items-center gap-4" data-testid={`lesson-${l.id}`}>
-                  <div className="h-11 w-11 rounded-lg bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center shrink-0">
+                  <div className="h-11 w-11 rounded-lg bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center shrink-0">
                     {l.video_type === "youtube" ? <Youtube className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
                   </div>
                   <div className="flex-1">
@@ -129,8 +129,8 @@ export default function CourseContent() {
 
           {/* Exercises */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-[#0A1128] flex items-center gap-2"><FileText className="h-5 w-5 text-[#FF9F1C]" /> Latihan Soal Bernilai</h2>
-            <Button onClick={() => { setExForm({ title: "", duration_minutes: 15 }); setExOpen(true); }} className="rounded-full bg-[#FF9F1C] hover:bg-[#e88f10] text-[#0A1128] font-semibold" data-testid="add-exercise-btn"><Plus className="h-4 w-4" /> Tambah Latihan</Button>
+            <h2 className="font-semibold text-[#0A1128] flex items-center gap-2"><FileText className="h-5 w-5 text-[#C9A227]" /> Latihan Soal Bernilai</h2>
+            <Button onClick={() => { setExForm({ title: "", duration_minutes: 15 }); setExOpen(true); }} className="rounded-full bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128] font-semibold" data-testid="add-exercise-btn"><Plus className="h-4 w-4" /> Tambah Latihan</Button>
           </div>
           {data.exercises.length === 0 ? <Empty icon={FileText} title="Belum ada latihan" desc="Nilai siswa dihitung otomatis dari latihan ini." /> : (
             <div className="grid sm:grid-cols-2 gap-4">
@@ -139,8 +139,8 @@ export default function CourseContent() {
                   <h3 className="font-semibold text-[#0A1128]">{ex.title}</h3>
                   <p className="mt-1 text-xs text-[#94A3B8]">{ex.question_count} soal · {ex.attempt_count} pengerjaan · {ex.duration_minutes} menit</p>
                   <div className="mt-4 flex gap-2">
-                    <Button size="sm" onClick={() => navigate(`/admin/tryouts/${ex.id}/builder`)} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid={`ex-build-${ex.id}`}><Settings2 className="h-4 w-4" /> Kelola Soal</Button>
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/admin/tryouts/${ex.id}/results`)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`ex-results-${ex.id}`}><BarChart3 className="h-4 w-4" /> Hasil</Button>
+                    <Button size="sm" onClick={() => navigate(`/admin/tryouts/${ex.id}/builder`)} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid={`ex-build-${ex.id}`}><Settings2 className="h-4 w-4" /> Kelola Soal</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/admin/tryouts/${ex.id}/results`)} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`ex-results-${ex.id}`}><BarChart3 className="h-4 w-4" /> Hasil</Button>
                   </div>
                 </div>
               ))}
@@ -160,7 +160,7 @@ export default function CourseContent() {
               <Label>Sumber Video</Label>
               <RadioGroup value={form.video_type} onValueChange={(v) => setForm((f) => ({ ...f, video_type: v, video_url: "" }))} className="mt-2 flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer" data-testid="video-type-youtube"><RadioGroupItem value="youtube" /> <Youtube className="h-4 w-4 text-red-500" /> YouTube</label>
-                <label className="flex items-center gap-2 cursor-pointer" data-testid="video-type-upload"><RadioGroupItem value="upload" /> <Upload className="h-4 w-4 text-[#4361EE]" /> Unggah Video</label>
+                <label className="flex items-center gap-2 cursor-pointer" data-testid="video-type-upload"><RadioGroupItem value="upload" /> <Upload className="h-4 w-4 text-[#0E7490]" /> Unggah Video</label>
               </RadioGroup>
             </div>
             {form.video_type === "youtube" ? (
@@ -168,8 +168,8 @@ export default function CourseContent() {
             ) : (
               <div>
                 <Label>File Video</Label>
-                <label className="mt-1.5 flex items-center gap-3 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#F4F7FE]" data-testid="lesson-video-upload">
-                  {uploadingVideo ? <Loader2 className="h-5 w-5 animate-spin text-[#4361EE]" /> : <Upload className="h-5 w-5 text-[#4361EE]" />}
+                <label className="mt-1.5 flex items-center gap-3 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#EFF6F8]" data-testid="lesson-video-upload">
+                  {uploadingVideo ? <Loader2 className="h-5 w-5 animate-spin text-[#0E7490]" /> : <Upload className="h-5 w-5 text-[#0E7490]" />}
                   <span className="text-sm text-[#475569]">{form.video_url ? "Video terunggah ✓ (klik untuk ganti)" : "Pilih file video (mp4/webm)"}</span>
                   <input type="file" accept="video/*" className="hidden" onChange={onVideoFile} />
                 </label>
@@ -177,16 +177,16 @@ export default function CourseContent() {
             )}
             <div>
               <Label>Lampiran (PDF/Dokumen)</Label>
-              <label className="mt-1.5 flex items-center gap-3 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#F4F7FE]" data-testid="lesson-attach-upload">
-                {uploadingAtt ? <Loader2 className="h-5 w-5 animate-spin text-[#4361EE]" /> : <Paperclip className="h-5 w-5 text-[#4361EE]" />}
+              <label className="mt-1.5 flex items-center gap-3 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#EFF6F8]" data-testid="lesson-attach-upload">
+                {uploadingAtt ? <Loader2 className="h-5 w-5 animate-spin text-[#0E7490]" /> : <Paperclip className="h-5 w-5 text-[#0E7490]" />}
                 <span className="text-sm text-[#475569]">Tambah lampiran (bisa beberapa)</span>
                 <input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx" className="hidden" onChange={onAttFiles} />
               </label>
               {form.attachments.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {form.attachments.map((a, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm rounded-lg bg-[#F4F7FE] px-3 py-2">
-                      <span className="truncate flex items-center gap-2"><FileText className="h-4 w-4 text-[#4361EE]" /> {a.name}</span>
+                    <div key={i} className="flex items-center justify-between text-sm rounded-lg bg-[#EFF6F8] px-3 py-2">
+                      <span className="truncate flex items-center gap-2"><FileText className="h-4 w-4 text-[#0E7490]" /> {a.name}</span>
                       <button onClick={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }))} className="text-[#94A3B8] hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   ))}
@@ -196,7 +196,7 @@ export default function CourseContent() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={saveLesson} disabled={uploadingVideo || uploadingAtt} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-lesson">Simpan</Button>
+            <Button onClick={saveLesson} disabled={uploadingVideo || uploadingAtt} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-lesson">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -210,7 +210,7 @@ export default function CourseContent() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExOpen(false)}>Batal</Button>
-            <Button onClick={saveExercise} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-exercise">Buat & Tambah Soal</Button>
+            <Button onClick={saveExercise} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-exercise">Buat & Tambah Soal</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -221,14 +221,14 @@ export default function CourseContent() {
           <DialogHeader><DialogTitle>Impor Materi Massal (ZIP)</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-[#475569]">Unggah satu berkas ZIP berisi banyak video (mp4, webm, mov) dan dokumen (pdf, doc, docx, ppt, pptx). Setiap berkas otomatis menjadi satu pelajaran baru.</p>
-            <label className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-6 cursor-pointer hover:bg-[#F4F7FE]" data-testid="zip-upload">
-              {zipImporting ? <Loader2 className="h-7 w-7 animate-spin text-[#4361EE]" /> : <FileArchive className="h-7 w-7 text-[#4361EE]" />}
+            <label className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-6 cursor-pointer hover:bg-[#EFF6F8]" data-testid="zip-upload">
+              {zipImporting ? <Loader2 className="h-7 w-7 animate-spin text-[#0E7490]" /> : <FileArchive className="h-7 w-7 text-[#0E7490]" />}
               <span className="text-sm font-medium text-[#0A1128]">{zipImporting ? "Mengimpor materi…" : "Pilih berkas .zip"}</span>
               <span className="text-xs text-[#94A3B8]">Video & dokumen akan diproses otomatis</span>
               <input type="file" accept=".zip,application/zip" className="hidden" onChange={onZipFile} disabled={zipImporting} />
             </label>
             {zipResult && (
-              <div className="rounded-lg bg-[#F4F7FE] p-4 space-y-2" data-testid="zip-result">
+              <div className="rounded-lg bg-[#EFF6F8] p-4 space-y-2" data-testid="zip-result">
                 <div className="flex items-center gap-2 text-sm text-[#10B981]"><CheckCircle2 className="h-4 w-4" /> {zipResult.created} materi berhasil diimpor</div>
                 <div className="flex items-center gap-2 text-sm text-[#94A3B8]"><FileText className="h-4 w-4" /> {zipResult.skipped} berkas dilewati (format tidak didukung)</div>
                 {zipResult.errors?.length > 0 && (

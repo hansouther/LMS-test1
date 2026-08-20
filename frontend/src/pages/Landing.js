@@ -19,8 +19,8 @@ import { toast } from "sonner";
 const HERO = "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NzE1MDU5OHww&ixlib=rb-4.1.0&q=85";
 
 const PORTALS = [
-  { icon: BookOpen, title: "Ruang Belajar Siswa", desc: "Materi publik & privat, CBT Try Out, dan katalog kursus dalam satu tempat.", color: "#4361EE" },
-  { icon: ShieldCheck, title: "Pusat Kendali Admin", desc: "Kelola berita, kalender, kursus, jadwal, bank soal, dan broadcast.", color: "#FF9F1C" },
+  { icon: BookOpen, title: "Ruang Belajar Siswa", desc: "Materi publik & privat, CBT Try Out, dan katalog kursus dalam satu tempat.", color: "#0E7490" },
+  { icon: ShieldCheck, title: "Pusat Kendali Admin", desc: "Kelola berita, kalender, kursus, jadwal, bank soal, dan broadcast.", color: "#C9A227" },
   { icon: UserCheck, title: "Dashboard Tentor", desc: "Job bidding jadwal mengajar, kalender pribadi, presensi & unggah materi.", color: "#10B981" },
   { icon: MonitorPlay, title: "Pemantau Proktor", desc: "Live monitoring, unduh laporan nilai, dan analitik tren performa.", color: "#7C3AED" },
 ];
@@ -43,22 +43,22 @@ function Header() {
     <header className={`fixed top-0 inset-x-0 z-50 transition-colors duration-200 ${scrolled ? "bg-white/70 backdrop-blur-xl border-b border-[#E2E8F0]" : "bg-transparent"}`}>
       <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2.5" data-testid="landing-logo">
-          <div className="h-9 w-9 rounded-xl bg-[#4361EE] flex items-center justify-center shadow-md shadow-[#4361EE]/30">
+          <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center shadow-md shadow-[#0E7490]/30">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
-          <span className="font-head font-bold text-[#0A1128] text-lg">CendekiaLMS</span>
+          <span className="font-head font-bold text-[#0A1128] text-lg">Binara LMS</span>
         </a>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
-          <a href="#cara" className="hover:text-[#4361EE] transition-colors duration-200">Cara Kerja</a>
-          <a href="#portal" className="hover:text-[#4361EE] transition-colors duration-200">Portal</a>
-          <Link to="/kursus" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-kursus">Kursus</Link>
-          <Link to="/kalender" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-kalender">Kalender</Link>
-          <Link to="/berita" className="hover:text-[#4361EE] transition-colors duration-200" data-testid="landing-nav-berita">Berita</Link>
-          <a href="#kemitraan" className="hover:text-[#4361EE] transition-colors duration-200">Kemitraan</a>
+          <a href="#cara" className="hover:text-[#0E7490] transition-colors duration-200">Cara Kerja</a>
+          <a href="#portal" className="hover:text-[#0E7490] transition-colors duration-200">Portal</a>
+          <Link to="/kursus" className="hover:text-[#0E7490] transition-colors duration-200" data-testid="landing-nav-kursus">Kursus</Link>
+          <Link to="/kalender" className="hover:text-[#0E7490] transition-colors duration-200" data-testid="landing-nav-kalender">Kalender</Link>
+          <Link to="/berita" className="hover:text-[#0E7490] transition-colors duration-200" data-testid="landing-nav-berita">Berita</Link>
+          <a href="#kemitraan" className="hover:text-[#0E7490] transition-colors duration-200">Kemitraan</a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/login"><Button variant="ghost" className="text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]" data-testid="header-login-btn">Masuk</Button></Link>
-          <Link to="/register"><Button className="rounded-full bg-[#4361EE] hover:bg-[#344ED0] px-5" data-testid="header-register-btn">Daftar Gratis</Button></Link>
+          <Link to="/login"><Button variant="ghost" className="text-[#475569] hover:text-[#0E7490] hover:bg-[#E6F5F8]" data-testid="header-login-btn">Masuk</Button></Link>
+          <Link to="/register"><Button className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74] px-5" data-testid="header-register-btn">Daftar Gratis</Button></Link>
         </div>
       </div>
     </header>
@@ -123,7 +123,7 @@ function PartnershipForm() {
         <Textarea value={form.message} onChange={set("message")} placeholder="Ceritakan kebutuhan kerja sama Anda..." className="mt-1.5" data-testid="partner-message" />
       </div>
       <div className="sm:col-span-2">
-        <Button type="submit" disabled={loading} className="w-full rounded-full bg-[#FF9F1C] hover:bg-[#e88f10] text-[#0A1128] font-semibold h-11" data-testid="partner-submit">
+        <Button type="submit" disabled={loading} className="w-full rounded-full bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128] font-semibold h-11" data-testid="partner-submit">
           {loading ? "Mengirim..." : "Ajukan Kerja Sama"} <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
@@ -139,8 +139,8 @@ export default function Landing() {
   const navigate = useNavigate();
 
   useSeo({
-    title: "CendekiaLMS — Platform Belajar, Try Out CBT & Kursus Interaktif",
-    description: "CendekiaLMS: satu ekosistem untuk belajar, mengajar & memantau prestasi. Try Out CBT, kursus interaktif, kalender akademik, dan analitik nilai untuk sekolah mitra.",
+    title: "Binara LMS — Platform Belajar, Try Out CBT & Kursus Interaktif",
+    description: "Binara LMS: satu ekosistem untuk belajar, mengajar & memantau prestasi. Try Out CBT, kursus interaktif, kalender akademik, dan analitik nilai untuk sekolah mitra.",
   });
 
   useEffect(() => {
@@ -158,21 +158,21 @@ export default function Landing() {
       <section className="relative pt-28 pb-20 brand-grid-bg">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#EEF2FF] text-[#4361EE] px-4 py-1.5 text-xs font-semibold">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#E6F5F8] text-[#0E7490] px-4 py-1.5 text-xs font-semibold">
               <Sparkles className="h-3.5 w-3.5" /> Platform LMS Terintegrasi 5 Portal
             </span>
             <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] text-[#0A1128]">
-              Satu ekosistem untuk <span className="text-[#4361EE]">belajar</span>, mengajar & <span className="text-[#FF9F1C]">memantau</span> prestasi.
+              Satu ekosistem untuk <span className="text-[#0E7490]">belajar</span>, mengajar & <span className="text-[#C9A227]">memantau</span> prestasi.
             </h1>
             <p className="mt-6 text-base sm:text-lg text-[#475569] max-w-xl">
-              CendekiaLMS menghubungkan Admin, Siswa, Tentor, dan Proktor sekolah mitra dalam satu alur data yang mulus — dari bank soal hingga analitik nilai.
+              Binara LMS menghubungkan Admin, Siswa, Tentor, dan Proktor sekolah mitra dalam satu alur data yang mulus — dari bank soal hingga analitik nilai.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button onClick={() => navigate("/register")} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0] h-12 px-7 text-base" data-testid="hero-cta-primary">
+              <Button onClick={() => navigate("/register")} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74] h-12 px-7 text-base" data-testid="hero-cta-primary">
                 Mulai Sekarang <ArrowRight className="h-4 w-4" />
               </Button>
               <a href="#cara">
-                <Button variant="outline" className="rounded-full h-12 px-7 text-base border-[#CBD5E1] hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="hero-cta-secondary">
+                <Button variant="outline" className="rounded-full h-12 px-7 text-base border-[#CBD5E1] hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="hero-cta-secondary">
                   <PlayCircle className="h-4 w-4" /> Lihat Cara Kerja
                 </Button>
               </a>
@@ -187,24 +187,24 @@ export default function Landing() {
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }} className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-tr from-[#4361EE]/20 to-[#FF9F1C]/20 rounded-[2rem] blur-2xl" />
+            <div className="absolute -inset-4 bg-gradient-to-tr from-[#0E7490]/20 to-[#C9A227]/20 rounded-[2rem] blur-2xl" />
             <img src={HERO} alt="Siswa belajar" className="relative rounded-[1.5rem] w-full h-[440px] object-cover border border-white shadow-2xl" />
           </motion.div>
         </div>
       </section>
 
       {/* Cara Kerja */}
-      <section id="cara" className="py-20 bg-[#F4F7FE]">
+      <section id="cara" className="py-20 bg-[#EFF6F8]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="max-w-2xl">
-            <h2 className="text-3xl sm:text-4xl font-bold">Cara menggunakan CendekiaLMS</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">Cara menggunakan Binara LMS</h2>
             <p className="mt-3 text-[#475569]">Empat langkah sederhana untuk mulai dari pendaftaran hingga pemantauan prestasi.</p>
           </div>
           <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {STEPS.map((s, i) => (
               <motion.div key={s.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className="bg-white rounded-2xl border border-[#E2E8F0] p-6 hover:-translate-y-1 transition-transform duration-200">
-                <div className="h-12 w-12 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center"><s.icon className="h-6 w-6" /></div>
+                <div className="h-12 w-12 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><s.icon className="h-6 w-6" /></div>
                 <div className="mt-4 text-xs font-bold text-[#94A3B8]">LANGKAH {i + 1}</div>
                 <h3 className="mt-1 text-lg font-semibold">{s.title}</h3>
                 <p className="mt-2 text-sm text-[#475569]">{s.desc}</p>
@@ -237,12 +237,12 @@ export default function Landing() {
       </section>
 
       {/* Kalender + Berita */}
-      <section className="py-20 bg-[#F4F7FE]">
+      <section className="py-20 bg-[#EFF6F8]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-10">
           <div id="kalender">
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Kalender Akademik</h2></div>
-              <Link to="/kalender" className="text-sm font-medium text-[#4361EE] hover:underline inline-flex items-center gap-1" data-testid="landing-calendar-more">Lihat lengkap <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#0E7490]" /><h2 className="text-2xl sm:text-3xl font-bold">Kalender Akademik</h2></div>
+              <Link to="/kalender" className="text-sm font-medium text-[#0E7490] hover:underline inline-flex items-center gap-1" data-testid="landing-calendar-more">Lihat lengkap <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
             <div data-testid="landing-calendar">
               <MonthCalendar events={calendar} initialDate={serverNow} showList={false} compact />
@@ -250,20 +250,20 @@ export default function Landing() {
           </div>
           <div id="berita">
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2"><Newspaper className="h-5 w-5 text-[#4361EE]" /><h2 className="text-2xl sm:text-3xl font-bold">Berita & Pengumuman</h2></div>
-              <Link to="/berita" className="text-sm font-medium text-[#4361EE] hover:underline inline-flex items-center gap-1" data-testid="landing-news-more">Semua berita <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <div className="flex items-center gap-2"><Newspaper className="h-5 w-5 text-[#0E7490]" /><h2 className="text-2xl sm:text-3xl font-bold">Berita & Pengumuman</h2></div>
+              <Link to="/berita" className="text-sm font-medium text-[#0E7490] hover:underline inline-flex items-center gap-1" data-testid="landing-news-more">Semua berita <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
             <div className="bg-white rounded-2xl border border-[#E2E8F0] divide-y divide-[#E2E8F0]" data-testid="landing-news">
               {news.length === 0 && <p className="p-6 text-sm text-[#94A3B8]">Belum ada berita.</p>}
               {news.slice(0, 6).map((n) => (
                 <Link key={n.id} to={`/berita/${n.id}`} data-testid={`landing-news-${n.id}`}
                   className="group flex items-start gap-3 p-4 hover:bg-[#F8FAFC] transition-colors duration-200">
-                  <span className="mt-1.5 h-2 w-2 rounded-full bg-[#4361EE] shrink-0" />
+                  <span className="mt-1.5 h-2 w-2 rounded-full bg-[#0E7490] shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-[#0A1128] group-hover:text-[#4361EE] transition-colors duration-200 leading-snug">{n.title}</h3>
-                    <span className="mt-1 inline-block text-[11px] font-medium text-[#4361EE] opacity-0 group-hover:opacity-100 transition-opacity duration-200">Lihat lebih lanjut →</span>
+                    <h3 className="font-semibold text-[#0A1128] group-hover:text-[#0E7490] transition-colors duration-200 leading-snug">{n.title}</h3>
+                    <span className="mt-1 inline-block text-[11px] font-medium text-[#0E7490] opacity-0 group-hover:opacity-100 transition-opacity duration-200">Lihat lebih lanjut →</span>
                   </div>
-                  <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[10px] font-semibold shrink-0">{n.category}</span>
+                  <span className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-2.5 py-0.5 text-[10px] font-semibold shrink-0">{n.category}</span>
                 </Link>
               ))}
             </div>
@@ -275,7 +275,7 @@ export default function Landing() {
       <section id="kemitraan" className="py-20">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-12 items-start">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#FFF4E5] text-[#FF9F1C] px-4 py-1.5 text-xs font-semibold"><Building2 className="h-3.5 w-3.5" /> Untuk Sekolah & Institusi</span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#FBF3DC] text-[#C9A227] px-4 py-1.5 text-xs font-semibold"><Building2 className="h-3.5 w-3.5" /> Untuk Sekolah & Institusi</span>
             <h2 className="mt-6 text-3xl sm:text-4xl font-bold">Jadilah Sekolah Mitra</h2>
             <p className="mt-4 text-[#475569]">Berikan akses pemantauan (proktor) untuk sekolah Anda: pantau kegiatan belajar, unduh laporan nilai Try Out, dan analisis tren performa setiap siswa secara langsung.</p>
             <ul className="mt-6 space-y-3">
@@ -285,7 +285,7 @@ export default function Landing() {
             </ul>
             <div className="mt-6">
               <Link to="/register/proktor"><Button className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid="landing-register-proctor">Daftar Akun Proktor <ArrowRight className="h-4 w-4" /></Button></Link>
-              <Link to="/register/tentor" className="ml-2"><Button variant="outline" className="rounded-full border-[#FF9F1C] text-[#FF9F1C] hover:bg-[#FFF4E5]" data-testid="landing-register-tutor">Daftar sebagai Tentor</Button></Link>
+              <Link to="/register/tentor" className="ml-2"><Button variant="outline" className="rounded-full border-[#C9A227] text-[#C9A227] hover:bg-[#FBF3DC]" data-testid="landing-register-tutor">Daftar sebagai Tentor</Button></Link>
               <p className="mt-2 text-xs text-[#94A3B8]">Sekolah mitra & pengajar dapat membuat akun (aktif setelah verifikasi admin).</p>
             </div>
           </div>
@@ -297,10 +297,10 @@ export default function Landing() {
       <footer className="bg-[#0A1128] text-white py-12">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-[#4361EE] flex items-center justify-center"><GraduationCap className="h-4 w-4 text-white" /></div>
-            <span className="font-head font-bold">CendekiaLMS</span>
+            <div className="h-8 w-8 rounded-lg bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-4 w-4 text-white" /></div>
+            <span className="font-head font-bold">Binara LMS</span>
           </div>
-          <p className="text-sm text-white/60">© 2026 CendekiaLMS. Learning Management System berbasis RBAC.</p>
+          <p className="text-sm text-white/60">© 2026 Binara LMS. Learning Management System berbasis RBAC.</p>
           <div className="flex gap-3">
             <Link to="/login"><Button variant="outline" className="rounded-full border-white/20 bg-transparent text-white hover:bg-white hover:text-[#0A1128]" data-testid="footer-login-btn">Masuk Portal</Button></Link>
           </div>

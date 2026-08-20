@@ -52,7 +52,7 @@ function ClassCard({ cls }) {
   return (
     <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden" data-testid={`schedule-${cls.id}`}>
       <button onClick={toggle} className="w-full p-5 flex items-center gap-5 text-left hover:bg-[#F8FAFC] transition-colors duration-200" data-testid={`schedule-toggle-${cls.id}`}>
-        <div className="h-14 w-14 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex flex-col items-center justify-center shrink-0">
+        <div className="h-14 w-14 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex flex-col items-center justify-center shrink-0">
           <Layers className="h-5 w-5" /><span className="text-[10px] font-bold mt-0.5">{sessions.length}x</span>
         </div>
         <div className="flex-1">
@@ -78,7 +78,7 @@ function ClassCard({ cls }) {
                   <div key={s.id} className="rounded-xl border border-[#E2E8F0] p-4" data-testid={`student-session-${s.id}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-[#F4F7FE] text-[#4361EE] flex flex-col items-center justify-center shrink-0">
+                        <div className="h-9 w-9 rounded-lg bg-[#EFF6F8] text-[#0E7490] flex flex-col items-center justify-center shrink-0">
                           <span className="text-[9px] uppercase leading-none">Ke</span><span className="text-sm font-bold leading-none">{s.no}</span>
                         </div>
                         <div>
@@ -93,12 +93,12 @@ function ClassCard({ cls }) {
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">Materi</p>
                         {mats.map((m) => (
                           <div key={m.id} className="flex items-start gap-2" data-testid={`student-material-${m.id}`}>
-                            <BookOpen className="h-4 w-4 text-[#4361EE] mt-0.5 shrink-0" />
+                            <BookOpen className="h-4 w-4 text-[#0E7490] mt-0.5 shrink-0" />
                             <div className="min-w-0">
                               <p className="text-sm text-[#0A1128] font-medium">{m.title}</p>
                               {m.description && <p className="text-xs text-[#475569]">{m.description}</p>}
                               <div className="flex flex-wrap gap-3 mt-0.5 text-xs">
-                                {m.link && <a href={m.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#4361EE] hover:underline"><LinkIcon className="h-3 w-3" /> Buka tautan</a>}
+                                {m.link && <a href={m.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#0E7490] hover:underline"><LinkIcon className="h-3 w-3" /> Buka tautan</a>}
                                 {m.file_url && <a href={fileUrl(m.file_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#10B981] hover:underline"><FileText className="h-3 w-3" /> {m.file_name || "Unduh berkas"}</a>}
                               </div>
                             </div>

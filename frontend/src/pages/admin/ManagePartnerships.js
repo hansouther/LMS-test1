@@ -8,8 +8,8 @@ import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
 const STATUS = {
-  new: { l: "Baru", c: "#4361EE", bg: "#EEF2FF" },
-  contacted: { l: "Dihubungi", c: "#FF9F1C", bg: "#FFF4E5" },
+  new: { l: "Baru", c: "#0E7490", bg: "#E6F5F8" },
+  contacted: { l: "Dihubungi", c: "#C9A227", bg: "#FBF3DC" },
   accepted: { l: "Diterima", c: "#10B981", bg: "#ECFDF5" },
   rejected: { l: "Ditolak", c: "#EF4444", bg: "#FEF2F2" },
 };
@@ -46,7 +46,7 @@ export default function ManagePartnerships() {
                   <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-[#94A3B8]" /> {p.phone}</p>
                   <p className="flex items-center gap-2"><Users className="h-4 w-4 text-[#94A3B8]" /> ± {p.student_count} siswa</p>
                 </div>
-                {p.message && <p className="mt-3 text-sm text-[#475569] rounded-lg bg-[#F4F7FE] p-3">{p.message}</p>}
+                {p.message && <p className="mt-3 text-sm text-[#475569] rounded-lg bg-[#EFF6F8] p-3">{p.message}</p>}
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-xs text-[#94A3B8]">{formatDate(p.created_at)}</span>
                   <Select value={p.status} onValueChange={(v) => update(p.id, v)}>

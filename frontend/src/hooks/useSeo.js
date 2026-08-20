@@ -37,7 +37,7 @@ export default function useSeo({ title, description, image = DEFAULT_OG_IMAGE, t
     upsert("property", "og:type", type);
     upsert("property", "og:url", url);
     upsert("property", "og:image", image);
-    upsert("property", "og:site_name", "CendekiaLMS");
+    upsert("property", "og:site_name", "Binara LMS");
     upsert("name", "twitter:card", image ? "summary_large_image" : "summary");
     upsert("name", "twitter:title", title);
     upsert("name", "twitter:description", description);

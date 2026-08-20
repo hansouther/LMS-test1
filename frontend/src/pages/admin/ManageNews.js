@@ -41,16 +41,16 @@ export default function ManageNews() {
   return (
     <div data-testid="manage-news">
       <PageHeader title="Berita & Pengumuman" subtitle="Kelola konten yang tampil di landing page publik."
-        actions={<Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-news-btn"><Plus className="h-4 w-4" /> Tambah Berita</Button>} />
+        actions={<Button onClick={openNew} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-news-btn"><Plus className="h-4 w-4" /> Tambah Berita</Button>} />
 
       {loading ? <Loading /> : !data?.length ? (
-        <Empty icon={Newspaper} title="Belum ada berita" action={<Button onClick={openNew} className="rounded-full bg-[#4361EE]"><Plus className="h-4 w-4" /> Tambah</Button>} />
+        <Empty icon={Newspaper} title="Belum ada berita" action={<Button onClick={openNew} className="rounded-full bg-[#0E7490]"><Plus className="h-4 w-4" /> Tambah</Button>} />
       ) : (
         <div className="grid md:grid-cols-2 gap-5">
           {data.map((n) => (
             <div key={n.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`news-${n.id}`}>
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-3 py-1 text-[11px] font-semibold">{n.category}</span>
+                <span className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-3 py-1 text-[11px] font-semibold">{n.category}</span>
                 <span className={`text-[11px] font-semibold ${n.published ? "text-[#10B981]" : "text-[#94A3B8]"}`}>{n.published ? "Terbit" : "Draft"}</span>
               </div>
               <h3 className="mt-3 font-semibold text-[#0A1128]">{n.title}</h3>
@@ -58,7 +58,7 @@ export default function ManageNews() {
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs text-[#94A3B8]">{formatDate(n.created_at)}</span>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(n)} data-testid={`edit-news-${n.id}`} className="hover:bg-[#EEF2FF] hover:text-[#4361EE]"><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(n)} data-testid={`edit-news-${n.id}`} className="hover:bg-[#E6F5F8] hover:text-[#0E7490]"><Pencil className="h-4 w-4" /></Button>
                   <ConfirmButton onConfirm={() => del(n.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-news-${n.id}`}><Trash2 className="h-4 w-4" /></Button>} />
                 </div>
               </div>
@@ -86,7 +86,7 @@ export default function ManageNews() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-news">Simpan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-news">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

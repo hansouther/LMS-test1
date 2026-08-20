@@ -27,7 +27,7 @@ const COMPETENCIES = [
   { v: "umum", l: "Umum" },
 ];
 const COMP_LABEL = { numerasi: "Numerasi", literasi: "Literasi", umum: "Umum" };
-const COMP_COLOR = { numerasi: "#4361EE", literasi: "#FF9F1C", umum: "#94A3B8" };
+const COMP_COLOR = { numerasi: "#0E7490", literasi: "#C9A227", umum: "#94A3B8" };
 const newOpts = () => [{ id: "o1", text: "" }, { id: "o2", text: "" }, { id: "o3", text: "" }, { id: "o4", text: "" }];
 const EMPTY = { type: "single", text: "", points: 20, options: newOpts(), correct: [], essay: "", competency: "umum" };
 
@@ -124,22 +124,22 @@ export default function TryoutBuilder() {
 
   return (
     <div data-testid="tryout-builder">
-      <Button variant="ghost" onClick={() => navigate("/admin/tryouts")} className="mb-3 text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
+      <Button variant="ghost" onClick={() => navigate("/admin/tryouts")} className="mb-3 text-[#475569] hover:text-[#0E7490] hover:bg-[#E6F5F8]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0A1128]">Kelola Bank Soal</h1>
           <p className="text-sm text-[#475569] mt-1">{questions?.length || 0} soal · Total {(questions || []).reduce((a, q) => a + (q.points || 0), 0)} poin</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" onClick={downloadTemplate} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="download-template"><FileDown className="h-4 w-4" /> Template</Button>
-          <Button variant="outline" onClick={() => fileRef.current?.click()} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="import-questions"><Upload className="h-4 w-4" /> Impor CSV/Excel</Button>
+          <Button variant="outline" onClick={downloadTemplate} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="download-template"><FileDown className="h-4 w-4" /> Template</Button>
+          <Button variant="outline" onClick={() => fileRef.current?.click()} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="import-questions"><Upload className="h-4 w-4" /> Impor CSV/Excel</Button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onImport} data-testid="import-file" />
-          <Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-question-btn"><Plus className="h-4 w-4" /> Tambah Soal</Button>
+          <Button onClick={openNew} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-question-btn"><Plus className="h-4 w-4" /> Tambah Soal</Button>
         </div>
       </div>
 
       {loading ? <Loading /> : !questions?.length ? (
-        <Empty icon={HelpCircle} title="Belum ada soal" desc="Tambahkan soal pertama untuk Try Out ini." action={<Button onClick={openNew} className="rounded-full bg-[#4361EE]"><Plus className="h-4 w-4" /> Tambah Soal</Button>} />
+        <Empty icon={HelpCircle} title="Belum ada soal" desc="Tambahkan soal pertama untuk Try Out ini." action={<Button onClick={openNew} className="rounded-full bg-[#0E7490]"><Plus className="h-4 w-4" /> Tambah Soal</Button>} />
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-[#E2E8F0] p-3" data-testid="bulk-toolbar">
@@ -154,7 +154,7 @@ export default function TryoutBuilder() {
                   <SelectTrigger className="h-9 w-36" data-testid="bulk-competency-select"><SelectValue /></SelectTrigger>
                   <SelectContent>{COMPETENCIES.map((c) => <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>)}</SelectContent>
                 </Select>
-                <Button size="sm" onClick={applyBulk} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="apply-bulk-competency"><Tag className="h-4 w-4" /> Terapkan</Button>
+                <Button size="sm" onClick={applyBulk} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="apply-bulk-competency"><Tag className="h-4 w-4" /> Terapkan</Button>
                 <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="rounded-full">Batal</Button>
               </div>
             ) : (
@@ -162,13 +162,13 @@ export default function TryoutBuilder() {
             )}
           </div>
           {questions.map((q, i) => (
-            <div key={q.id} className={`bg-white rounded-xl border p-5 transition-colors duration-200 ${selected.has(q.id) ? "border-[#4361EE] ring-1 ring-[#4361EE]/30" : "border-[#E2E8F0]"}`} data-testid={`question-${q.id}`}>
+            <div key={q.id} className={`bg-white rounded-xl border p-5 transition-colors duration-200 ${selected.has(q.id) ? "border-[#0E7490] ring-1 ring-[#0E7490]/30" : "border-[#E2E8F0]"}`} data-testid={`question-${q.id}`}>
               <div className="flex items-start gap-3">
                 <Checkbox checked={selected.has(q.id)} onCheckedChange={() => toggleSelect(q.id)} className="mt-1 shrink-0" data-testid={`select-question-${q.id}`} />
                 <div className="flex-1 flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-xs font-bold">#{i + 1}</span>
+                    <span className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-2.5 py-0.5 text-xs font-bold">#{i + 1}</span>
                     <span className="text-xs text-[#94A3B8]">{typeLabel(q.type)} · {q.points} poin</span>
                     <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${COMP_COLOR[q.competency || "umum"]}1A`, color: COMP_COLOR[q.competency || "umum"] }} data-testid={`question-competency-${q.id}`}>{COMP_LABEL[q.competency || "umum"]}</span>
                   </div>
@@ -188,7 +188,7 @@ export default function TryoutBuilder() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(q)} className="hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-question-${q.id}`}><Plus className="h-4 w-4 rotate-45" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(q)} className="hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`edit-question-${q.id}`}><Plus className="h-4 w-4 rotate-45" /></Button>
                   <ConfirmButton onConfirm={() => del(q.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-question-${q.id}`}><Trash2 className="h-4 w-4" /></Button>} />
                 </div>
                 </div>
@@ -267,7 +267,7 @@ export default function TryoutBuilder() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-question">Simpan Soal</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-question">Simpan Soal</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

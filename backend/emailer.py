@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 EMAIL_BASE_URL = "https://integrations.emergentagent.com"  # constant, never from env
 EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
-EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "CendekiaLMS")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Binara LMS")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 
@@ -116,18 +116,18 @@ async def notify_safe(to: str, subject: str, html: str) -> bool:
 
 def _shell(inner: str) -> str:
     cta = (f'<p style="margin:24px 0"><a href="{APP_BASE_URL}/login" '
-           f'style="background:#4361EE;color:#ffffff;text-decoration:none;padding:12px 22px;'
-           f'border-radius:999px;font-weight:600">Buka CendekiaLMS</a></p>') if APP_BASE_URL else ""
+           f'style="background:#0E7490;color:#ffffff;text-decoration:none;padding:12px 22px;'
+           f'border-radius:999px;font-weight:600">Buka Binara LMS</a></p>') if APP_BASE_URL else ""
     return (
         '<table role="presentation" width="100%" style="background:#F4F7FE;padding:24px">'
         '<tr><td align="center"><table role="presentation" width="560" '
         'style="background:#ffffff;border-radius:16px;border:1px solid #E2E8F0;'
         'font-family:Arial,Helvetica,sans-serif;color:#0A1128">'
         '<tr><td style="padding:28px 32px">'
-        f'<p style="font-size:18px;font-weight:700;color:#4361EE;margin:0 0 16px">CendekiaLMS</p>'
+        f'<p style="font-size:18px;font-weight:700;color:#0E7490;margin:0 0 16px">Binara LMS</p>'
         f'{inner}{cta}'
         '<p style="font-size:12px;color:#94A3B8;margin-top:24px">'
-        'Email ini dikirim otomatis oleh CendekiaLMS sebagai notifikasi layanan. '
+        'Email ini dikirim otomatis oleh Binara LMS sebagai notifikasi layanan. '
         'Kami tidak pernah meminta kata sandi atau data kartu melalui email.</p>'
         '</td></tr></table></td></tr></table>'
     )

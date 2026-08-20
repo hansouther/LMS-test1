@@ -15,7 +15,7 @@ export default function TryoutResults() {
 
   return (
     <div data-testid="tryout-results">
-      <Button variant="ghost" onClick={() => navigate("/admin/tryouts")} className="mb-3 text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
+      <Button variant="ghost" onClick={() => navigate("/admin/tryouts")} className="mb-3 text-[#475569] hover:text-[#0E7490] hover:bg-[#E6F5F8]"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0A1128]">Hasil & Peringkat</h1>
@@ -29,7 +29,7 @@ export default function TryoutResults() {
         <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#F4F7FE]">
+              <TableRow className="bg-[#EFF6F8]">
                 <TableHead className="w-16">Rank</TableHead>
                 <TableHead>Siswa</TableHead>
                 <TableHead>Skor</TableHead>
@@ -41,14 +41,14 @@ export default function TryoutResults() {
               {data.map((a, i) => (
                 <TableRow key={a.id} data-testid={`result-row-${i}`}>
                   <TableCell>
-                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-[#FFF4E5] text-[#FF9F1C]" : "bg-[#F4F7FE] text-[#475569]"}`}>{i + 1}</span>
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-[#FBF3DC] text-[#C9A227]" : "bg-[#EFF6F8] text-[#475569]"}`}>{i + 1}</span>
                   </TableCell>
                   <TableCell>
                     <p className="font-medium text-[#0A1128]">{a.student?.name || "-"}</p>
                     <p className="text-xs text-[#94A3B8]">{a.student?.email}</p>
                   </TableCell>
                   <TableCell className="font-mono2">{a.score}/{a.max_score}</TableCell>
-                  <TableCell><span className="font-mono2 font-bold" style={{ color: a.percentage >= 70 ? "#10B981" : a.percentage >= 50 ? "#FF9F1C" : "#EF4444" }}>{a.percentage}%</span></TableCell>
+                  <TableCell><span className="font-mono2 font-bold" style={{ color: a.percentage >= 70 ? "#10B981" : a.percentage >= 50 ? "#C9A227" : "#EF4444" }}>{a.percentage}%</span></TableCell>
                   <TableCell className="hidden sm:table-cell text-xs text-[#94A3B8]">{formatDateTime(a.submitted_at)}</TableCell>
                 </TableRow>
               ))}

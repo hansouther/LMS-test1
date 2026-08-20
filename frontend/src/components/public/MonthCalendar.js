@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
-export const TYPE_COLOR = { exam: "#EF4444", deadline: "#FF9F1C", holiday: "#10B981", event: "#7C3AED", academic: "#4361EE", class: "#0EA5E9" };
+export const TYPE_COLOR = { exam: "#EF4444", deadline: "#C9A227", holiday: "#10B981", event: "#7C3AED", academic: "#0E7490", class: "#0EA5E9" };
 export const TYPE_LABEL = { exam: "Ujian", deadline: "Tenggat", holiday: "Libur", event: "Acara", academic: "Akademik", class: "Kelas Pelatihan" };
 const WD = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -52,7 +52,7 @@ export default function MonthCalendar({ events = [], initialDate, showList = tru
         {/* Month header */}
         <div className="flex items-center justify-between px-5 py-4 bg-[#0A1128] text-white">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-[#FF9F1C]" />
+            <CalendarDays className="h-5 w-5 text-[#C9A227]" />
             <span className="font-head font-bold text-lg" data-testid="calendar-month-label">{MONTHS[month]} {year}</span>
           </div>
           <div className="flex gap-1">
@@ -74,12 +74,12 @@ export default function MonthCalendar({ events = [], initialDate, showList = tru
             const active = selectedDay === day;
             return (
               <button key={day} onClick={() => setSelectedDay(active ? null : day)} data-testid={`calendar-day-${day}`}
-                className={`${compact ? "h-12" : "h-20"} border-b border-r border-[#F1F5F9] p-1.5 text-left align-top relative transition-colors duration-200 ${active ? "bg-[#EEF2FF]" : "hover:bg-[#F8FAFC]"}`}>
-                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-medium ${isToday(day) ? "bg-[#4361EE] text-white" : "text-[#0A1128]"}`}>{day}</span>
+                className={`${compact ? "h-12" : "h-20"} border-b border-r border-[#F1F5F9] p-1.5 text-left align-top relative transition-colors duration-200 ${active ? "bg-[#E6F5F8]" : "hover:bg-[#F8FAFC]"}`}>
+                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-medium ${isToday(day) ? "bg-[#0E7490] text-white" : "text-[#0A1128]"}`}>{day}</span>
                 {dayEvents.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {dayEvents.slice(0, compact ? 3 : 4).map((ev, i) => (
-                      <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TYPE_COLOR[ev.type] || "#4361EE" }} />
+                      <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TYPE_COLOR[ev.type] || "#0E7490" }} />
                     ))}
                   </div>
                 )}
@@ -107,7 +107,7 @@ export default function MonthCalendar({ events = [], initialDate, showList = tru
           <div className="space-y-2">
             {(selectedDay ? (eventsByDay[selectedDay] || []) : monthEvents).map((c) => (
               <div key={c.id} className="flex items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3" data-testid={`calendar-event-${c.id}`}>
-                <div className="h-11 w-11 rounded-lg flex flex-col items-center justify-center text-white shrink-0" style={{ backgroundColor: TYPE_COLOR[c.type] || "#4361EE" }}>
+                <div className="h-11 w-11 rounded-lg flex flex-col items-center justify-center text-white shrink-0" style={{ backgroundColor: TYPE_COLOR[c.type] || "#0E7490" }}>
                   <span className="text-sm font-bold leading-none">{new Date(c.date).getDate()}</span>
                   <span className="text-[9px] uppercase">{new Date(c.date).toLocaleDateString("id-ID", { month: "short" })}</span>
                 </div>

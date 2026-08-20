@@ -80,11 +80,11 @@ h1, h2, h3, h4, h5, h6, .font-head {
 
 .brand-grid-bg {
     background-image:
-        radial-gradient(circle at 1px 1px, rgba(67, 97, 238, 0.12) 1px, transparent 0);
+        radial-gradient(circle at 1px 1px, rgba(14, 116, 144, 0.12) 1px, transparent 0);
     background-size: 28px 28px;
 }
 
 ::selection {
-    background: rgba(67, 97, 238, 0.18);
+    background: rgba(14, 116, 144, 0.18);
     color: #0a1128;
 }

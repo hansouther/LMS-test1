@@ -4,7 +4,7 @@ import useFetch from "@/hooks/useFetch";
 import PageHeader from "@/components/common/PageHeader";
 import { Loading, Empty } from "@/components/common/States";
 
-const PALETTE = ["#4361EE", "#FF9F1C", "#10B981", "#7C3AED", "#EF4444", "#0EA5E9", "#EC4899"];
+const PALETTE = ["#0E7490", "#C9A227", "#10B981", "#7C3AED", "#EF4444", "#0EA5E9", "#EC4899"];
 const DIR = {
   up: { icon: TrendingUp, c: "#10B981", l: "Meningkat" },
   down: { icon: TrendingDown, c: "#EF4444", l: "Menurun" },
@@ -45,7 +45,7 @@ export default function Analytics() {
                   <XAxis dataKey="tryout" tick={{ fontSize: 11, fill: "#94A3B8" }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#94A3B8" }} />
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E2E8F0", fontSize: 12 }} />
-                  <Bar dataKey="avg" name="Rata-rata (%)" fill="#4361EE" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="avg" name="Rata-rata (%)" fill="#0E7490" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -67,7 +67,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Users className="h-5 w-5 text-[#4361EE]" /> Ringkasan per Siswa</h2>
+          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Users className="h-5 w-5 text-[#0E7490]" /> Ringkasan per Siswa</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {perStudent.map((s) => {
               const d = DIR[s.direction] || DIR.flat;
@@ -84,8 +84,8 @@ export default function Analytics() {
                   <div className="mt-3 flex gap-2">
                     {s.trend.map((t, i) => (
                       <div key={i} className="flex-1 text-center">
-                        <div className="h-16 bg-[#F4F7FE] rounded-lg relative overflow-hidden flex items-end">
-                          <div className="w-full rounded-t-lg" style={{ height: `${t.percentage}%`, backgroundColor: t.percentage >= 70 ? "#10B981" : t.percentage >= 50 ? "#FF9F1C" : "#EF4444" }} />
+                        <div className="h-16 bg-[#EFF6F8] rounded-lg relative overflow-hidden flex items-end">
+                          <div className="w-full rounded-t-lg" style={{ height: `${t.percentage}%`, backgroundColor: t.percentage >= 70 ? "#10B981" : t.percentage >= 50 ? "#C9A227" : "#EF4444" }} />
                         </div>
                         <p className="mt-1 text-[10px] font-mono2 text-[#475569]">{t.percentage}%</p>
                       </div>

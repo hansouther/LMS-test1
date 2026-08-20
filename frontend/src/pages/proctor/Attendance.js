@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function ProctorAttendance() {
   const { data, loading } = useFetch("/proctor/attendance");
-  const rateColor = (r) => r >= 80 ? "#10B981" : r >= 50 ? "#FF9F1C" : "#EF4444";
+  const rateColor = (r) => r >= 80 ? "#10B981" : r >= 50 ? "#C9A227" : "#EF4444";
 
   return (
     <div data-testid="proctor-attendance">
@@ -18,7 +18,7 @@ export default function ProctorAttendance() {
         <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#F4F7FE]">
+              <TableRow className="bg-[#EFF6F8]">
                 <TableHead>Siswa</TableHead>
                 <TableHead className="hidden sm:table-cell">Kelas</TableHead>
                 <TableHead>Hadir / Total</TableHead>

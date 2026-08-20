@@ -41,16 +41,16 @@ export default function ManageCourses() {
   return (
     <div data-testid="manage-courses">
       <PageHeader title="Manajemen Kursus" subtitle="Rilis penawaran kursus aktif untuk pendaftaran siswa."
-        actions={<Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-course-btn"><Plus className="h-4 w-4" /> Tambah Kursus</Button>} />
+        actions={<Button onClick={openNew} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-course-btn"><Plus className="h-4 w-4" /> Tambah Kursus</Button>} />
 
       {loading ? <Loading /> : !data?.length ? (
-        <Empty icon={BookOpen} title="Belum ada kursus" action={<Button onClick={openNew} className="rounded-full bg-[#4361EE]"><Plus className="h-4 w-4" /> Tambah</Button>} />
+        <Empty icon={BookOpen} title="Belum ada kursus" action={<Button onClick={openNew} className="rounded-full bg-[#0E7490]"><Plus className="h-4 w-4" /> Tambah</Button>} />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {data.map((c) => (
             <div key={c.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`course-${c.id}`}>
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-3 py-1 text-[11px] font-semibold">{c.subject}</span>
+                <span className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-3 py-1 text-[11px] font-semibold">{c.subject}</span>
                 <span className={`text-[11px] font-semibold ${c.active ? "text-[#10B981]" : "text-[#94A3B8]"}`}>{c.active ? "Aktif" : "Nonaktif"}</span>
               </div>
               <h3 className="mt-3 font-semibold text-[#0A1128]">{c.title}</h3>
@@ -60,13 +60,13 @@ export default function ManageCourses() {
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.enrolled_count} terdaftar</span>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <span className="font-head font-bold text-[#4361EE]">{formatRupiah(c.price)}</span>
+                <span className="font-head font-bold text-[#0E7490]">{formatRupiah(c.price)}</span>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(c)} className="hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-course-${c.id}`}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(c)} className="hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`edit-course-${c.id}`}><Pencil className="h-4 w-4" /></Button>
                   <ConfirmButton onConfirm={() => del(c.id)} trigger={<Button variant="ghost" size="icon" className="hover:bg-red-50 hover:text-red-600" data-testid={`delete-course-${c.id}`}><Trash2 className="h-4 w-4" /></Button>} />
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/courses/${c.id}/content`)} className="mt-3 w-full rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`content-${c.id}`}><Video className="h-4 w-4" /> Kelola Konten & Latihan</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/courses/${c.id}/content`)} className="mt-3 w-full rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`content-${c.id}`}><Video className="h-4 w-4" /> Kelola Konten & Latihan</Button>
             </div>
           ))}
         </div>
@@ -90,7 +90,7 @@ export default function ManageCourses() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-course">Simpan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-course">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

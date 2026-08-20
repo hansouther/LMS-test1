@@ -11,9 +11,9 @@ export default function StudentRecommendations() {
   const hasItems = (rec.exercises?.length || 0) + (rec.courses?.length || 0) > 0;
 
   return (
-    <div className="mt-8 rounded-2xl border border-[#DCE6FF] bg-[#F4F7FE] p-6" data-testid="student-recommendations">
+    <div className="mt-8 rounded-2xl border border-[#CFE9EF] bg-[#EFF6F8] p-6" data-testid="student-recommendations">
       <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="h-5 w-5 text-[#4361EE]" />
+        <Sparkles className="h-5 w-5 text-[#0E7490]" />
         <h3 className="font-semibold text-[#0A1128]">Rekomendasi Latihan untuk Kamu</h3>
       </div>
       <p className="text-sm text-[#475569] flex items-center gap-1.5">
@@ -31,7 +31,7 @@ export default function StudentRecommendations() {
               <p className="text-xs font-semibold uppercase tracking-wide text-[#94A3B8] mb-2 flex items-center gap-1"><ClipboardList className="h-3.5 w-3.5" /> Latihan Soal</p>
               <div className="space-y-2">
                 {rec.exercises.map((t) => (
-                  <Link key={t.id} to={exLink(t)} className="block rounded-lg bg-white border border-[#E2E8F0] px-3 py-2.5 hover:border-[#4361EE] transition-colors duration-200" data-testid={`rec-exercise-${t.id}`}>
+                  <Link key={t.id} to={exLink(t)} className="block rounded-lg bg-white border border-[#E2E8F0] px-3 py-2.5 hover:border-[#0E7490] transition-colors duration-200" data-testid={`rec-exercise-${t.id}`}>
                     <p className="text-sm font-medium text-[#0A1128] truncate">{t.title}</p>
                     <p className="text-xs text-[#94A3B8]">{t.subject} · {t.kind === "exercise" ? "Latihan" : "Try Out"}</p>
                   </Link>
@@ -44,7 +44,7 @@ export default function StudentRecommendations() {
               <p className="text-xs font-semibold uppercase tracking-wide text-[#94A3B8] mb-2 flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> Kursus</p>
               <div className="space-y-2">
                 {rec.courses.map((c) => (
-                  <Link key={c.id} to="/student/courses" className="block rounded-lg bg-white border border-[#E2E8F0] px-3 py-2.5 hover:border-[#4361EE] transition-colors duration-200" data-testid={`rec-course-${c.id}`}>
+                  <Link key={c.id} to="/student/courses" className="block rounded-lg bg-white border border-[#E2E8F0] px-3 py-2.5 hover:border-[#0E7490] transition-colors duration-200" data-testid={`rec-course-${c.id}`}>
                     <p className="text-sm font-medium text-[#0A1128] truncate">{c.title}</p>
                     <p className="text-xs text-[#94A3B8]">{c.subject}</p>
                   </Link>

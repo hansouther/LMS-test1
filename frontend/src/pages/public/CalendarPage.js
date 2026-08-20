@@ -12,8 +12,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
 
   useSeo({
-    title: "Kalender Akademik — CendekiaLMS",
-    description: "Kalender akademik bulanan CendekiaLMS: jadwal ujian, tenggat, libur, dan acara. Diperbarui otomatis mengikuti waktu server.",
+    title: "Kalender Akademik — Binara LMS",
+    description: "Kalender akademik bulanan Binara LMS: jadwal ujian, tenggat, libur, dan acara. Diperbarui otomatis mengikuti waktu server.",
   });
 
   useEffect(() => {
@@ -28,14 +28,14 @@ export default function CalendarPage() {
       <section className="bg-[#0A1128] text-white py-16">
         <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-4 py-1.5 text-xs font-semibold">
-            <CalendarDays className="h-3.5 w-3.5 text-[#FF9F1C]" /> Kalender Akademik
+            <CalendarDays className="h-3.5 w-3.5 text-[#C9A227]" /> Kalender Akademik
           </span>
           <h1 className="mt-5 text-4xl sm:text-5xl font-extrabold leading-tight">Agenda & Jadwal Akademik</h1>
           <p className="mt-4 text-white/70 max-w-2xl">Tampilan kalender bulanan lengkap. Lihat ujian, tenggat, libur, dan acara pada bulan berjalan — diperbarui otomatis mengikuti waktu server.</p>
         </div>
       </section>
 
-      <section className="py-14 bg-[#F4F7FE]">
+      <section className="py-14 bg-[#EFF6F8]">
         <div className="max-w-5xl mx-auto px-5 sm:px-8" data-testid="calendar-page">
           {loading ? <Loading /> : <MonthCalendar events={events} initialDate={serverNow} showList />}
         </div>

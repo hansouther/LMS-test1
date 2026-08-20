@@ -18,7 +18,7 @@ import { toast } from "sonner";
 
 const EMPTY = { title: "", subject: "", required_qualifications: "", course_id: "", open_to_all: false, notes: "", sessions: [] };
 const EMPTY_SESSION = { date: "", start_time: "16:00", end_time: "18:00", topic: "" };
-const STATUS = { open: { l: "Terbuka", c: "#FF9F1C", bg: "#FFF4E5" }, confirmed: { l: "Terkonfirmasi", c: "#10B981", bg: "#ECFDF5" } };
+const STATUS = { open: { l: "Terbuka", c: "#C9A227", bg: "#FBF3DC" }, confirmed: { l: "Terkonfirmasi", c: "#10B981", bg: "#ECFDF5" } };
 
 export default function ManageSchedule() {
   const { data: slots, loading, refetch } = useFetch("/admin/slots");
@@ -77,7 +77,7 @@ export default function ManageSchedule() {
   return (
     <div data-testid="manage-schedule">
       <PageHeader title="Jadwal Kelas & Job Bidding" subtitle="Buat kelas multi-pertemuan, buka untuk bidding tentor, dan konfirmasi penugasan."
-        actions={<Button onClick={() => { setForm(EMPTY); setGen({ start: "", count: 8, start_time: "16:00", end_time: "18:00" }); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-slot-btn"><Plus className="h-4 w-4" /> Buat Kelas</Button>} />
+        actions={<Button onClick={() => { setForm(EMPTY); setGen({ start: "", count: 8, start_time: "16:00", end_time: "18:00" }); setOpen(true); }} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-slot-btn"><Plus className="h-4 w-4" /> Buat Kelas</Button>} />
 
       {loading ? <Loading /> : !slots?.length ? (
         <Empty icon={CalendarClock} title="Belum ada kelas" />
@@ -90,7 +90,7 @@ export default function ManageSchedule() {
               <div key={s.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`slot-${s.id}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex flex-col items-center justify-center shrink-0">
+                    <div className="h-12 w-12 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex flex-col items-center justify-center shrink-0">
                       <Layers className="h-4 w-4" /><span className="text-[11px] font-bold leading-none mt-0.5">{sessionCount(s)}x</span>
                     </div>
                     <div>
@@ -106,7 +106,7 @@ export default function ManageSchedule() {
                   <div className="flex items-center gap-2">
                     <span className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: st.c, backgroundColor: st.bg }}>{st.l}</span>
                     {s.status === "open" && (
-                      <Button variant="outline" size="sm" onClick={() => viewBids(s)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`view-bids-${s.id}`}>
+                      <Button variant="outline" size="sm" onClick={() => viewBids(s)} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`view-bids-${s.id}`}>
                         <Gavel className="h-4 w-4" /> Bidding ({s.bid_count})
                       </Button>
                     )}
@@ -116,8 +116,8 @@ export default function ManageSchedule() {
                 {sessions.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-[#F1F5F9] flex flex-wrap gap-2" data-testid={`slot-sessions-${s.id}`}>
                     {sessions.map((se) => (
-                      <span key={se.id} className="inline-flex items-center gap-1 rounded-full bg-[#F4F7FE] px-2.5 py-1 text-[11px] text-[#475569]">
-                        <span className="font-semibold text-[#4361EE]">#{se.no}</span> {formatDate(se.date)} · {se.start_time}-{se.end_time}{se.topic ? ` · ${se.topic}` : ""}
+                      <span key={se.id} className="inline-flex items-center gap-1 rounded-full bg-[#EFF6F8] px-2.5 py-1 text-[11px] text-[#475569]">
+                        <span className="font-semibold text-[#0E7490]">#{se.no}</span> {formatDate(se.date)} · {se.start_time}-{se.end_time}{se.topic ? ` · ${se.topic}` : ""}
                       </span>
                     ))}
                   </div>
@@ -146,8 +146,8 @@ export default function ManageSchedule() {
             <div><Label>Kualifikasi Tentor (pisahkan dengan koma)</Label><Input placeholder="Matematika, Fisika" value={form.required_qualifications} onChange={set("required_qualifications")} className="mt-1.5" data-testid="slot-quals" /></div>
 
             {/* Weekly generator */}
-            <div className="rounded-xl bg-[#F4F7FE] p-4">
-              <p className="text-sm font-semibold text-[#0A1128] flex items-center gap-2 mb-3"><Wand2 className="h-4 w-4 text-[#4361EE]" /> Buat Pertemuan Mingguan Otomatis</p>
+            <div className="rounded-xl bg-[#EFF6F8] p-4">
+              <p className="text-sm font-semibold text-[#0A1128] flex items-center gap-2 mb-3"><Wand2 className="h-4 w-4 text-[#0E7490]" /> Buat Pertemuan Mingguan Otomatis</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                 <div><Label className="text-xs">Pertemuan #1</Label><div className="mt-1"><DatePicker value={gen.start} onChange={(v) => setGen((g) => ({ ...g, start: v }))} testid="gen-start-date" /></div></div>
                 <div><Label className="text-xs">Jumlah</Label><Input type="number" min="1" value={gen.count} onChange={(e) => setGen((g) => ({ ...g, count: e.target.value }))} className="mt-1 h-10" data-testid="gen-count" /></div>
@@ -169,7 +169,7 @@ export default function ManageSchedule() {
                 <div className="space-y-2" data-testid="sessions-editor">
                   {form.sessions.map((s, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-center rounded-lg border border-[#E2E8F0] p-2" data-testid={`session-row-${i}`}>
-                      <span className="col-span-1 text-center text-xs font-bold text-[#4361EE]">#{i + 1}</span>
+                      <span className="col-span-1 text-center text-xs font-bold text-[#0E7490]">#{i + 1}</span>
                       <div className="col-span-3"><DatePicker value={s.date} onChange={(v) => updateSession(i, "date", v)} testid={`session-date-${i}`} /></div>
                       <Input className="col-span-2 h-9" value={s.start_time} onChange={(e) => updateSession(i, "start_time", e.target.value)} placeholder="16:00" data-testid={`session-start-${i}`} />
                       <Input className="col-span-2 h-9" value={s.end_time} onChange={(e) => updateSession(i, "end_time", e.target.value)} placeholder="18:00" data-testid={`session-end-${i}`} />
@@ -186,7 +186,7 @@ export default function ManageSchedule() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-slot">Buka untuk Bidding</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-slot">Buka untuk Bidding</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -200,7 +200,7 @@ export default function ManageSchedule() {
               {bids.map((b) => (
                 <div key={b.id} className="rounded-xl border border-[#E2E8F0] p-4" data-testid={`bid-${b.id}`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2"><User className="h-4 w-4 text-[#4361EE]" /><span className="font-semibold text-[#0A1128] text-sm">{b.tutor_name}</span></div>
+                    <div className="flex items-center gap-2"><User className="h-4 w-4 text-[#0E7490]" /><span className="font-semibold text-[#0A1128] text-sm">{b.tutor_name}</span></div>
                     <Button size="sm" onClick={() => assign(b.id)} className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid={`assign-${b.id}`}><CheckCircle2 className="h-4 w-4" /> Tugaskan</Button>
                   </div>
                   {b.message && <p className="mt-2 text-sm text-[#475569]">{b.message}</p>}

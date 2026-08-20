@@ -37,7 +37,7 @@ export default function CourseCatalog() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.map((c) => (
             <div key={c.id} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col hover:-translate-y-1 transition-transform duration-200" data-testid={`course-${c.id}`}>
-              <div className="h-36 bg-gradient-to-br from-[#4361EE] to-[#7C3AED] relative">
+              <div className="h-36 bg-gradient-to-br from-[#0E7490] to-[#7C3AED] relative">
                 {c.thumbnail && <img src={c.thumbnail} alt="" className="h-full w-full object-cover" />}
                 <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#0A1128]">{c.subject}</span>
               </div>
@@ -46,11 +46,11 @@ export default function CourseCatalog() {
                 <h3 className="mt-1 font-semibold text-[#0A1128]">{c.title}</h3>
                 <p className="mt-2 text-sm text-[#475569] line-clamp-2 flex-1">{c.description}</p>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="font-head font-bold text-[#4361EE]">{formatRupiah(c.price)}</span>
+                  <span className="font-head font-bold text-[#0E7490]">{formatRupiah(c.price)}</span>
                   {c.enrolled ? (
                     <Button onClick={() => navigate(`/student/courses/${c.id}/learn`)} size="sm" className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid={`open-course-${c.id}`}><PlayCircle className="h-4 w-4" /> Buka Kelas</Button>
                   ) : (
-                    <Button onClick={() => enroll(c.id)} disabled={busy === c.id} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" size="sm" data-testid={`enroll-${c.id}`}>
+                    <Button onClick={() => enroll(c.id)} disabled={busy === c.id} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" size="sm" data-testid={`enroll-${c.id}`}>
                       {busy === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Daftar"}
                     </Button>
                   )}

@@ -18,15 +18,15 @@ export default function TutorDashboard() {
       {loading ? <Loading /> : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard icon={Gavel} label="Slot Terbuka" value={data.open_slots} accent="#FF9F1C" testid="stat-open-slots" />
-            <StatCard icon={Award} label="Bidding Saya" value={data.my_bids} accent="#4361EE" testid="stat-my-bids" />
+            <StatCard icon={Gavel} label="Slot Terbuka" value={data.open_slots} accent="#C9A227" testid="stat-open-slots" />
+            <StatCard icon={Award} label="Bidding Saya" value={data.my_bids} accent="#0E7490" testid="stat-my-bids" />
             <StatCard icon={CalendarCheck} label="Kelas Terkonfirmasi" value={data.confirmed_classes} accent="#10B981" testid="stat-confirmed" />
             <StatCard icon={Library} label="Materi Diunggah" value={data.my_materials} accent="#7C3AED" testid="stat-materials" />
           </div>
 
           <div className="mt-8 grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E2E8F0] p-6">
-              <h3 className="font-semibold text-[#0A1128] mb-4 flex items-center gap-2"><CalendarCheck className="h-5 w-5 text-[#4361EE]" /> Kelas Mendatang</h3>
+              <h3 className="font-semibold text-[#0A1128] mb-4 flex items-center gap-2"><CalendarCheck className="h-5 w-5 text-[#0E7490]" /> Kelas Mendatang</h3>
               {data.upcoming?.length ? (
                 <div className="divide-y divide-[#E2E8F0]">
                   {data.upcoming.map((s) => (
@@ -45,12 +45,12 @@ export default function TutorDashboard() {
               <h3 className="font-semibold text-[#0A1128] mb-3">Kualifikasi Anda</h3>
               <div className="flex flex-wrap gap-2">
                 {(data.qualifications || []).map((q) => (
-                  <span key={q} className="rounded-full bg-[#EEF2FF] text-[#4361EE] px-3 py-1.5 text-xs font-semibold">{q}</span>
+                  <span key={q} className="rounded-full bg-[#E6F5F8] text-[#0E7490] px-3 py-1.5 text-xs font-semibold">{q}</span>
                 ))}
                 {(!data.qualifications || data.qualifications.length === 0) && <p className="text-sm text-[#94A3B8]">Belum ada kualifikasi.</p>}
               </div>
-              <Link to="/profile" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#4361EE] hover:underline" data-testid="manage-qualifications-link">Kelola kualifikasi & CV →</Link>
-              <Link to="/tutor/bidding" className="mt-2 block text-sm font-medium text-[#4361EE] hover:underline">Lihat slot terbuka →</Link>
+              <Link to="/profile" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#0E7490] hover:underline" data-testid="manage-qualifications-link">Kelola kualifikasi & CV →</Link>
+              <Link to="/tutor/bidding" className="mt-2 block text-sm font-medium text-[#0E7490] hover:underline">Lihat slot terbuka →</Link>
             </div>
           </div>
         </>

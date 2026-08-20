@@ -34,8 +34,8 @@ export default function LearningRoom() {
             <button key={m.id} onClick={() => setOpen(m)} data-testid={`material-${m.id}`}
               className="text-left bg-white rounded-xl border border-[#E2E8F0] p-5 hover:-translate-y-1 transition-transform duration-200">
               <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center"><FileText className="h-5 w-5" /></div>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${m.visibility === "private" ? "bg-[#FFF4E5] text-[#FF9F1C]" : "bg-[#ECFDF5] text-[#10B981]"}`}>
+                <div className="h-10 w-10 rounded-lg bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><FileText className="h-5 w-5" /></div>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${m.visibility === "private" ? "bg-[#FBF3DC] text-[#C9A227]" : "bg-[#ECFDF5] text-[#10B981]"}`}>
                   {m.visibility === "private" ? <><Lock className="h-3 w-3" /> Privat</> : <><Globe className="h-3 w-3" /> Publik</>}
                 </span>
               </div>
@@ -54,8 +54,8 @@ export default function LearningRoom() {
           <DialogHeader><DialogTitle>{open?.title}</DialogTitle></DialogHeader>
           <div className="text-sm text-[#475569] space-y-3">
             <p className="text-[#0A1128]">{open?.description}</p>
-            <div className="rounded-lg bg-[#F4F7FE] p-4 whitespace-pre-wrap">{open?.content || "Konten materi tidak tersedia."}</div>
-            {open?.file_url && <a href={open.file_url} target="_blank" rel="noreferrer" className="text-[#4361EE] font-semibold hover:underline">Buka lampiran</a>}
+            <div className="rounded-lg bg-[#EFF6F8] p-4 whitespace-pre-wrap">{open?.content || "Konten materi tidak tersedia."}</div>
+            {open?.file_url && <a href={open.file_url} target="_blank" rel="noreferrer" className="text-[#0E7490] font-semibold hover:underline">Buka lampiran</a>}
             <p className="text-xs text-[#94A3B8]">Oleh {open?.tutor_name} · {formatDate(open?.created_at)}</p>
           </div>
         </DialogContent>

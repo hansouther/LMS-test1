@@ -80,15 +80,34 @@ async def _course_bundle(student_id: str, course_id: str):
     exercises = await db.tryouts.find(
         {"course_id": course_id, "kind": "exercise", "published": True}, {"_id": 0}
     ).sort("created_at", 1).to_list(200)
+    ex_ids = [ex["id"] for ex in exercises]
+
+    # Batch: question counts for all exercises in one aggregation
+    qc_map = {}
+    if ex_ids:
+        async for row in db.questions.aggregate([
+            {"$match": {"tryout_id": {"$in": ex_ids}}},
+            {"$group": {"_id": "$tryout_id", "count": {"$sum": 1}}},
+        ]):
+            qc_map[row["_id"]] = row["count"]
+
+    # Batch: all submitted attempts for this student across those exercises in one query
+    att_map = {}
+    if ex_ids:
+        all_atts = await db.attempts.find(
+            {"student_id": student_id, "tryout_id": {"$in": ex_ids}, "status": "submitted"},
+            {"_id": 0, "per_question": 0},
+        ).to_list(2000)
+        for a in all_atts:
+            att_map.setdefault(a["tryout_id"], []).append(a)
+
     ex_out = []
     for ex in exercises:
-        qc = await db.questions.count_documents({"tryout_id": ex["id"]})
+        qc = qc_map.get(ex["id"], 0)
         if qc == 0:
             continue
         ex["question_count"] = qc
-        atts = await db.attempts.find(
-            {"student_id": student_id, "tryout_id": ex["id"], "status": "submitted"}, {"_id": 0, "per_question": 0}
-        ).to_list(200)
+        atts = att_map.get(ex["id"], [])
         if atts:
             best = max(atts, key=lambda a: a.get("percentage", 0))
             ex.update({"attempt_status": "submitted", "attempts_count": len(atts),
@@ -265,11 +284,18 @@ async def student_class_detail(slot_id: str, user: dict = Depends(student_only))
 @router.get("/tryouts")
 async def tryouts(user: dict = Depends(student_only)):
     items = await db.tryouts.find({"published": True, "kind": {"$ne": "exercise"}}, {"_id": 0}).sort("start_at", -1).to_list(100)
-    my_attempts = await db.attempts.find({"student_id": user["id"]}, {"_id": 0}).to_list(200)
+    my_attempts = await db.attempts.find({"student_id": user["id"]}, {"_id": 0, "per_question": 0}).to_list(200)
     amap = {a["tryout_id"]: a for a in my_attempts}
+    tids = [t["id"] for t in items]
+    qc_map = {}
+    if tids:
+        async for row in db.questions.aggregate([
+            {"$match": {"tryout_id": {"$in": tids}}},
+            {"$group": {"_id": "$tryout_id", "count": {"$sum": 1}}},
+        ]):
+            qc_map[row["_id"]] = row["count"]
     for t in items:
-        qcount = await db.questions.count_documents({"tryout_id": t["id"]})
-        t["question_count"] = qcount
+        t["question_count"] = qc_map.get(t["id"], 0)
         att = amap.get(t["id"])
         t["attempt_status"] = att["status"] if att else None
         t["attempt_id"] = att["id"] if att else None

@@ -25,11 +25,11 @@ export default function TryoutResult() {
 
   if (loading) return <Loading />;
   const pct = data.percentage;
-  const color = pct >= 70 ? "#10B981" : pct >= 50 ? "#FF9F1C" : "#EF4444";
+  const color = pct >= 70 ? "#10B981" : pct >= 50 ? "#C9A227" : "#EF4444";
 
   return (
     <div data-testid="tryout-result">
-      <Button variant="ghost" onClick={() => navigate("/student/tryouts")} className="mb-4 text-[#475569] hover:text-[#4361EE] hover:bg-[#EEF2FF]" data-testid="back-to-tryouts"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
+      <Button variant="ghost" onClick={() => navigate("/student/tryouts")} className="mb-4 text-[#475569] hover:text-[#0E7490] hover:bg-[#E6F5F8]" data-testid="back-to-tryouts"><ArrowLeft className="h-4 w-4" /> Kembali</Button>
 
       <div className="rounded-2xl bg-[#0A1128] text-white p-8 relative overflow-hidden">
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full blur-3xl" style={{ backgroundColor: `${color}55` }} />
@@ -50,7 +50,7 @@ export default function TryoutResult() {
         </div>
       </div>
 
-      <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Trophy className="h-5 w-5 text-[#FF9F1C]" /> Pembahasan Jawaban</h2>
+      <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Trophy className="h-5 w-5 text-[#C9A227]" /> Pembahasan Jawaban</h2>
       <div className="space-y-4">
         {(data.per_question || []).map((pq, i) => {
           const at = answerText(pq);
@@ -67,7 +67,7 @@ export default function TryoutResult() {
                 <span className="font-mono2 text-sm font-bold shrink-0" style={{ color: pq.correct ? "#10B981" : "#EF4444" }}>{pq.earned}/{pq.points}</span>
               </div>
               <div className="mt-3 ml-8 grid sm:grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg bg-[#F4F7FE] px-3 py-2"><span className="text-xs text-[#94A3B8]">Jawaban Anda:</span> <span className="text-[#0A1128]">{at.student}</span></div>
+                <div className="rounded-lg bg-[#EFF6F8] px-3 py-2"><span className="text-xs text-[#94A3B8]">Jawaban Anda:</span> <span className="text-[#0A1128]">{at.student}</span></div>
                 <div className="rounded-lg bg-[#ECFDF5] px-3 py-2"><span className="text-xs text-[#94A3B8]">Kunci:</span> <span className="text-[#10B981] font-medium">{at.correct}</span></div>
               </div>
             </div>

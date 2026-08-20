@@ -1,4 +1,4 @@
-# Panduan Pengelolaan Server CendekiaLMS — Skala 10.000 Pengunjung Bersamaan
+# Panduan Pengelolaan Server Binara LMS — Skala 10.000 Pengunjung Bersamaan
 
 Dokumen ini menjelaskan **cara mengelola server** agar setiap halaman publik (landing page, `/kalender`, `/berita`) dan portal LMS mampu **diakses oleh 10.000 pengunjung dalam satu waktu (concurrent)** untuk belajar dan menggunakan aplikasi. Ditulis sebagai tutorial langkah-demi-langkah yang bisa diikuti tanpa asumsi pengetahuan mendalam.
 

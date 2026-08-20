@@ -38,6 +38,7 @@ origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["*"],
+    allow_origin_regex=r"https://.*\.(emergentagent\.com|emergent\.host|emergent\.sh)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

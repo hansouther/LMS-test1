@@ -31,7 +31,7 @@ export default function ManageBroadcast() {
   return (
     <div data-testid="manage-broadcast">
       <PageHeader title="Broadcast ke Proktor" subtitle="Siarkan informasi khusus yang tampil langsung di halaman Proktor sekolah mitra."
-        actions={<Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-broadcast-btn"><Plus className="h-4 w-4" /> Broadcast Baru</Button>} />
+        actions={<Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-broadcast-btn"><Plus className="h-4 w-4" /> Broadcast Baru</Button>} />
 
       {loading ? <Loading /> : !data?.length ? (
         <Empty icon={Radio} title="Belum ada broadcast" />
@@ -70,7 +70,7 @@ export default function ManageBroadcast() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-broadcast">Siarkan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-broadcast">Siarkan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -39,7 +39,7 @@ export default function ClassManagerView() {
             <div key={c.id} className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden" data-testid={`class-${c.id}`}>
               <div className="w-full p-5 flex items-center justify-between gap-3">
                 <button onClick={() => setActive(active === c.id ? null : c.id)} className="flex items-center gap-4 text-left flex-1 min-w-0" data-testid={`class-toggle-${c.id}`}>
-                  <div className="h-12 w-12 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center shrink-0"><Users className="h-6 w-6" /></div>
+                  <div className="h-12 w-12 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center shrink-0"><Users className="h-6 w-6" /></div>
                   <div className="min-w-0">
                     <p className="font-semibold text-[#0A1128] truncate">{c.title}</p>
                     <p className="text-xs text-[#94A3B8] mt-0.5">{c.subject} · {c.sessions.length} pertemuan · {c.material_count} materi{c.course_title ? ` · ${c.course_title}` : ""}{!isTutor ? ` · ${c.tutor_name}` : ""}</p>
@@ -56,7 +56,7 @@ export default function ClassManagerView() {
                   {c.sessions.map((s) => (
                     <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between" data-testid={`session-${s.id}`}>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-[#F4F7FE] text-[#4361EE] flex flex-col items-center justify-center shrink-0">
+                        <div className="h-10 w-10 rounded-lg bg-[#EFF6F8] text-[#0E7490] flex flex-col items-center justify-center shrink-0">
                           <span className="text-[10px] uppercase leading-none">Ke</span>
                           <span className="text-sm font-bold leading-none">{s.no}</span>
                         </div>
@@ -66,8 +66,8 @@ export default function ClassManagerView() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setMaterialSession({ cls: c, session: s })} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`materi-btn-${s.id}`}><BookOpen className="h-4 w-4" /> Materi</Button>
-                        <Button size="sm" onClick={() => setAttSession({ cls: c, session: s })} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid={`presensi-btn-${s.id}`}><ClipboardCheck className="h-4 w-4" /> Presensi</Button>
+                        <Button size="sm" variant="outline" onClick={() => setMaterialSession({ cls: c, session: s })} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`materi-btn-${s.id}`}><BookOpen className="h-4 w-4" /> Materi</Button>
+                        <Button size="sm" onClick={() => setAttSession({ cls: c, session: s })} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid={`presensi-btn-${s.id}`}><ClipboardCheck className="h-4 w-4" /> Presensi</Button>
                       </div>
                     </div>
                   ))}
@@ -87,7 +87,7 @@ export default function ClassManagerView() {
 
 function RecapDialog({ cls, onClose }) {
   const { data, loading } = useFetch(`/classes/${cls.id}/attendance-summary`);
-  const rateColor = (r) => r >= 80 ? "#10B981" : r >= 50 ? "#FF9F1C" : "#EF4444";
+  const rateColor = (r) => r >= 80 ? "#10B981" : r >= 50 ? "#C9A227" : "#EF4444";
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg" data-testid="recap-dialog">
@@ -151,7 +151,7 @@ function MaterialDialog({ data, onClose }) {
                 <p className="text-sm font-semibold text-[#0A1128]">{m.title}</p>
                 {m.description && <p className="text-xs text-[#475569] mt-0.5">{m.description}</p>}
                 <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
-                  {m.link && <a href={m.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#4361EE] hover:underline"><LinkIcon className="h-3 w-3" /> Tautan</a>}
+                  {m.link && <a href={m.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#0E7490] hover:underline"><LinkIcon className="h-3 w-3" /> Tautan</a>}
                   {m.file_url && <a href={fileUrl(m.file_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#10B981] hover:underline"><FileText className="h-3 w-3" /> {m.file_name || "Berkas"}</a>}
                 </div>
               </div>
@@ -164,14 +164,14 @@ function MaterialDialog({ data, onClose }) {
           <Input placeholder="Judul materi" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} data-testid="material-title" />
           <Textarea placeholder="Deskripsi singkat (opsional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} data-testid="material-desc" />
           <Input placeholder="Tautan (YouTube/Google Drive/URL)" value={form.link} onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))} data-testid="material-link" />
-          <label className="flex items-center gap-2 text-sm text-[#475569] cursor-pointer rounded-lg border border-dashed border-[#CBD5E1] p-3 hover:bg-[#F4F7FE]" data-testid="material-file-label">
-            <Paperclip className="h-4 w-4 text-[#4361EE]" /> {file ? file.name : "Unggah berkas (PDF/dokumen) — opsional"}
+          <label className="flex items-center gap-2 text-sm text-[#475569] cursor-pointer rounded-lg border border-dashed border-[#CBD5E1] p-3 hover:bg-[#EFF6F8]" data-testid="material-file-label">
+            <Paperclip className="h-4 w-4 text-[#0E7490]" /> {file ? file.name : "Unggah berkas (PDF/dokumen) — opsional"}
             <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Tutup</Button>
-          <Button onClick={add} disabled={saving} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-material">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Tambah</>}</Button>
+          <Button onClick={add} disabled={saving} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-material">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Tambah</>}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -226,8 +226,8 @@ function AttendanceDialog({ data, isTutor, onClose }) {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     {isTutor && cls.course_id && (
-                      <button onClick={() => toggleFav(s.id)} data-testid={`fav-btn-${s.id}`} title="Tandai siswa unggulan" className={favs[s.id]?.is ? "text-[#FF9F1C]" : "text-[#CBD5E1] hover:text-[#FF9F1C]"}>
-                        <Star className="h-5 w-5" fill={favs[s.id]?.is ? "#FF9F1C" : "none"} />
+                      <button onClick={() => toggleFav(s.id)} data-testid={`fav-btn-${s.id}`} title="Tandai siswa unggulan" className={favs[s.id]?.is ? "text-[#C9A227]" : "text-[#CBD5E1] hover:text-[#C9A227]"}>
+                        <Star className="h-5 w-5" fill={favs[s.id]?.is ? "#C9A227" : "none"} />
                       </button>
                     )}
                     <div><p className="text-sm font-medium text-[#0A1128]">{s.name}</p><p className="text-xs text-[#94A3B8]">{s.email}</p></div>

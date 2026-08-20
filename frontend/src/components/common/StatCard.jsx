@@ -1,4 +1,4 @@
-export default function StatCard({ icon: Icon, label, value, hint, accent = "#4361EE", testid }) {
+export default function StatCard({ icon: Icon, label, value, hint, accent = "#0E7490", testid }) {
   return (
     <div
       className="bg-white rounded-xl border border-[#E2E8F0] p-6 transition-transform duration-200 hover:-translate-y-1"

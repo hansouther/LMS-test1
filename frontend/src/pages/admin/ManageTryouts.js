@@ -40,16 +40,16 @@ export default function ManageTryouts() {
   return (
     <div data-testid="manage-tryouts">
       <PageHeader title="Bank Soal & Try Out" subtitle="Buat paket Try Out, kelola soal & kunci jawaban, atur waktu, dan lihat hasil."
-        actions={<Button onClick={openNew} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-tryout-btn"><Plus className="h-4 w-4" /> Buat Try Out</Button>} />
+        actions={<Button onClick={openNew} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-tryout-btn"><Plus className="h-4 w-4" /> Buat Try Out</Button>} />
 
       {loading ? <Loading /> : !data?.length ? (
-        <Empty icon={FileText} title="Belum ada Try Out" action={<Button onClick={openNew} className="rounded-full bg-[#4361EE]"><Plus className="h-4 w-4" /> Buat</Button>} />
+        <Empty icon={FileText} title="Belum ada Try Out" action={<Button onClick={openNew} className="rounded-full bg-[#0E7490]"><Plus className="h-4 w-4" /> Buat</Button>} />
       ) : (
         <div className="grid md:grid-cols-2 gap-5">
           {data.map((t) => (
             <div key={t.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5" data-testid={`tryout-${t.id}`}>
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-[#F4F7FE] px-3 py-1 text-[11px] font-semibold text-[#475569]">{t.subject}</span>
+                <span className="rounded-full bg-[#EFF6F8] px-3 py-1 text-[11px] font-semibold text-[#475569]">{t.subject}</span>
                 <span className={`text-[11px] font-semibold ${t.published ? "text-[#10B981]" : "text-[#94A3B8]"}`}>{t.published ? "Terbit" : "Draft"}</span>
               </div>
               <h3 className="mt-3 font-semibold text-[#0A1128]">{t.title}</h3>
@@ -59,9 +59,9 @@ export default function ManageTryouts() {
                 <span>{t.duration_minutes} menit</span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => navigate(`/admin/tryouts/${t.id}/builder`)} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid={`build-${t.id}`}><Settings2 className="h-4 w-4" /> Kelola Soal</Button>
-                <Button size="sm" variant="outline" onClick={() => navigate(`/admin/tryouts/${t.id}/results`)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`results-${t.id}`}><BarChart3 className="h-4 w-4" /> Hasil</Button>
-                <Button size="sm" variant="ghost" onClick={() => openEdit(t)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-tryout-${t.id}`}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" onClick={() => navigate(`/admin/tryouts/${t.id}/builder`)} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid={`build-${t.id}`}><Settings2 className="h-4 w-4" /> Kelola Soal</Button>
+                <Button size="sm" variant="outline" onClick={() => navigate(`/admin/tryouts/${t.id}/results`)} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`results-${t.id}`}><BarChart3 className="h-4 w-4" /> Hasil</Button>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(t)} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`edit-tryout-${t.id}`}><Pencil className="h-4 w-4" /></Button>
                 <ConfirmButton onConfirm={() => del(t.id)} trigger={<Button size="sm" variant="ghost" className="rounded-full hover:bg-red-50 hover:text-red-600" data-testid={`delete-tryout-${t.id}`}><Trash2 className="h-4 w-4" /></Button>} />
               </div>
             </div>
@@ -86,7 +86,7 @@ export default function ManageTryouts() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-tryout">Simpan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-tryout">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

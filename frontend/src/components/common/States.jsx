@@ -11,7 +11,7 @@ export function Loading({ label }) {
 export function Empty({ icon: Icon = Inbox, title, desc, action }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-state">
-      <div className="h-14 w-14 rounded-2xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center">
+      <div className="h-14 w-14 rounded-2xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center">
         <Icon className="h-7 w-7" />
       </div>
       <h3 className="mt-4 font-semibold text-[#0A1128]">{title}</h3>

@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
-const COMP_COLOR = { Numerasi: "#4361EE", Literasi: "#FF9F1C" };
-const scoreColor = (p) => (p >= 70 ? "#10B981" : p >= 40 ? "#FF9F1C" : "#EF4444");
+const COMP_COLOR = { Numerasi: "#0E7490", Literasi: "#C9A227" };
+const scoreColor = (p) => (p >= 70 ? "#10B981" : p >= 40 ? "#C9A227" : "#EF4444");
 const TREND = {
   naik: { icon: TrendingUp, c: "#10B981", l: "Naik" },
   turun: { icon: TrendingDown, c: "#EF4444", l: "Turun" },
@@ -52,9 +52,9 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
 
   const actions = (
     <div className="flex items-center gap-2 flex-wrap">
-      <Button onClick={() => download("scores.csv", "nilai_siswa.csv")} disabled={!hasData} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="download-scores-csv"><Download className="h-4 w-4" /> Nilai per Try Out</Button>
+      <Button onClick={() => download("scores.csv", "nilai_siswa.csv")} disabled={!hasData} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="download-scores-csv"><Download className="h-4 w-4" /> Nilai per Try Out</Button>
       <Button onClick={() => download("recap.csv", "rekap_kelemahan_siswa.csv")} disabled={!hasData} className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid="download-recap-csv"><Download className="h-4 w-4" /> Rekap Kelemahan</Button>
-      <Button onClick={() => download("items.csv", "analisis_butir_soal.csv")} disabled={!hasData} variant="outline" className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="download-items-csv"><Download className="h-4 w-4" /> Analisis Butir</Button>
+      <Button onClick={() => download("items.csv", "analisis_butir_soal.csv")} disabled={!hasData} variant="outline" className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="download-items-csv"><Download className="h-4 w-4" /> Analisis Butir</Button>
     </div>
   );
 
@@ -85,12 +85,12 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
 
           {/* Per-subject bars */}
           <div className="mt-6 bg-white rounded-2xl border border-[#E2E8F0] p-6">
-            <h3 className="font-semibold text-[#0A1128] mb-4 flex items-center gap-2"><BookOpen className="h-5 w-5 text-[#4361EE]" /> Rata-rata per Mata Pelajaran</h3>
+            <h3 className="font-semibold text-[#0A1128] mb-4 flex items-center gap-2"><BookOpen className="h-5 w-5 text-[#0E7490]" /> Rata-rata per Mata Pelajaran</h3>
             <div className="space-y-3" data-testid="subject-bars">
               {Object.entries(subjectAvg).sort((a, b) => a[1] - b[1]).map(([subj, avg]) => (
                 <div key={subj} className="flex items-center gap-3" data-testid={`subject-bar-${subj}`}>
                   <span className="w-32 text-sm text-[#475569] truncate">{subj}</span>
-                  <div className="flex-1 h-6 bg-[#F4F7FE] rounded-lg overflow-hidden">
+                  <div className="flex-1 h-6 bg-[#EFF6F8] rounded-lg overflow-hidden">
                     <div className="h-full rounded-lg flex items-center justify-end pr-2" style={{ width: `${Math.max(avg, 6)}%`, backgroundColor: scoreColor(avg) }}>
                       <span className="text-[11px] font-mono2 font-bold text-white">{avg}%</span>
                     </div>
@@ -101,11 +101,11 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
           </div>
 
           {/* Per-student recap */}
-          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Users className="h-5 w-5 text-[#4361EE]" /> Rekap Kelemahan per Siswa</h2>
+          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Users className="h-5 w-5 text-[#0E7490]" /> Rekap Kelemahan per Siswa</h2>
           <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F4F7FE]">
+                <TableRow className="bg-[#EFF6F8]">
                   <TableHead>Siswa</TableHead>
                   <TableHead className="hidden md:table-cell">Sekolah</TableHead>
                   <TableHead>Rata-rata</TableHead>
@@ -140,11 +140,11 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
           </div>
 
           {/* Item analysis — hardest questions */}
-          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><ClipboardList className="h-5 w-5 text-[#4361EE]" /> Analisis Butir Soal (paling sulit)</h2>
+          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><ClipboardList className="h-5 w-5 text-[#0E7490]" /> Analisis Butir Soal (paling sulit)</h2>
           <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F4F7FE]">
+                <TableRow className="bg-[#EFF6F8]">
                   <TableHead className="min-w-[240px]">Soal</TableHead>
                   <TableHead className="hidden md:table-cell">Mapel</TableHead>
                   <TableHead>Kompetensi</TableHead>
@@ -169,7 +169,7 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
           </div>
 
           {/* Recommendations per student */}
-          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Sparkles className="h-5 w-5 text-[#4361EE]" /> Rekomendasi Latihan per Siswa</h2>
+          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Sparkles className="h-5 w-5 text-[#0E7490]" /> Rekomendasi Latihan per Siswa</h2>
           {(() => {
             const withRec = recap.filter((r) => r.recommendations && ((r.recommendations.exercises?.length || 0) + (r.recommendations.courses?.length || 0) > 0));
             if (!withRec.length) return <p className="text-sm text-[#94A3B8]">Belum ada rekomendasi latihan yang cocok. Tambahkan kursus/latihan pada mata pelajaran terkait.</p>;
@@ -183,7 +183,7 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {r.recommendations.exercises?.map((t) => (
-                        <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[11px] font-medium"><ClipboardList className="h-3 w-3" /> {t.title}</span>
+                        <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-[#E6F5F8] text-[#0E7490] px-2.5 py-0.5 text-[11px] font-medium"><ClipboardList className="h-3 w-3" /> {t.title}</span>
                       ))}
                       {r.recommendations.courses?.map((c) => (
                         <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] text-[#10B981] px-2.5 py-0.5 text-[11px] font-medium"><BookOpen className="h-3 w-3" /> {c.title}</span>

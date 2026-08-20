@@ -33,7 +33,7 @@ export default function Reports() {
         <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#F4F7FE]">
+              <TableRow className="bg-[#EFF6F8]">
                 <TableHead>Siswa</TableHead>
                 <TableHead>Try Out</TableHead>
                 <TableHead className="hidden sm:table-cell">Mapel</TableHead>
@@ -49,7 +49,7 @@ export default function Reports() {
                   <TableCell>{r.tryout_title}</TableCell>
                   <TableCell className="hidden sm:table-cell text-[#475569]">{r.subject}</TableCell>
                   <TableCell className="font-mono2">{r.score}/{r.max_score}</TableCell>
-                  <TableCell><span className="font-mono2 font-bold" style={{ color: r.percentage >= 70 ? "#10B981" : r.percentage >= 50 ? "#FF9F1C" : "#EF4444" }}>{r.percentage}%</span></TableCell>
+                  <TableCell><span className="font-mono2 font-bold" style={{ color: r.percentage >= 70 ? "#10B981" : r.percentage >= 50 ? "#C9A227" : "#EF4444" }}>{r.percentage}%</span></TableCell>
                   <TableCell className="hidden md:table-cell text-xs text-[#94A3B8]">{formatDateTime(r.submitted_at)}</TableCell>
                 </TableRow>
               ))}

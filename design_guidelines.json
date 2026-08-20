@@ -21,12 +21,12 @@
   "colors": {
     "palette_name": "Intelligent & Comfortable",
     "primary": {
-      "hex": "#4361EE",
+      "hex": "#0E7490",
       "name": "Intellect Blue",
       "usage": "CTAs, active navigation, progress indicators. Evokes trust and mental clarity."
     },
     "accent": {
-      "hex": "#FF9F1C",
+      "hex": "#C9A227",
       "name": "Vivid Amber",
       "usage": "Alerts, secondary CTAs, focus points, 'Job Bidding' highlights. Striking without vibrating."
     },
@@ -82,11 +82,11 @@
   },
   "accessibility": {
     "contrast": "Ensure 4.5:1 ratio for normal text. Avoid light grey text on white.",
-    "focus": "focus:ring-2 focus:ring-[#4361EE]/50 focus:outline-none.",
+    "focus": "focus:ring-2 focus:ring-[#0E7490]/50 focus:outline-none.",
     "testing": "All interactive elements MUST include data-testid attribute in kebab-case."
   },
   "component_name": {
-    "buttons": "Pill-shaped or rounded-md. Primary: bg-[#4361EE] text-white hover:bg-[#344ED0].",
+    "buttons": "Pill-shaped or rounded-md. Primary: bg-[#0E7490] text-white hover:bg-[#344ED0].",
     "cards": "Go cardless where possible. When needed, use rounded-lg with 1px border. No excessive box-shadow.",
     "forms": "Always use Shadcn input, select, date-picker. DO NOT use native HTML <select> or <input type='date'>.",
     "tables": "Shadcn tables for all data lists (Admin, Proctor).",

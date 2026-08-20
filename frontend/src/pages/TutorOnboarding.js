@@ -63,11 +63,11 @@ export default function TutorOnboarding() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#F4F7FE]" data-testid="tutor-onboarding">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#EFF6F8]" data-testid="tutor-onboarding">
       <div className="w-full max-w-xl">
         <div className="flex items-center gap-2.5 mb-6 justify-center">
-          <div className="h-10 w-10 rounded-xl bg-[#FF9F1C] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
-          <span className="font-head font-bold text-xl text-[#0A1128]">CendekiaLMS</span>
+          <div className="h-10 w-10 rounded-xl bg-[#C9A227] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
+          <span className="font-head font-bold text-xl text-[#0A1128]">Binara LMS</span>
         </div>
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8">
           <h1 className="text-2xl font-bold text-[#0A1128]">Lengkapi Berkas Tentor</h1>
@@ -81,12 +81,12 @@ export default function TutorOnboarding() {
               <Label className="text-[#0A1128]">CV (PDF)</Label>
               {cv ? (
                 <div className="mt-1.5 flex items-center justify-between rounded-lg border border-[#E2E8F0] p-3" data-testid="cv-uploaded">
-                  <a href={fileUrl(cv.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#4361EE] hover:underline"><FileText className="h-4 w-4" /> {cv.name}</a>
+                  <a href={fileUrl(cv.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#0E7490] hover:underline"><FileText className="h-4 w-4" /> {cv.name}</a>
                   <button onClick={() => setCv(null)} className="text-[#CBD5E1] hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ) : (
-                <label className="mt-1.5 flex items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#F4F7FE] text-sm text-[#475569]" data-testid="cv-upload">
-                  {uploadingCv ? <Loader2 className="h-4 w-4 animate-spin text-[#4361EE]" /> : <Upload className="h-4 w-4 text-[#4361EE]" />} {uploadingCv ? "Mengunggah..." : "Pilih berkas CV (PDF)"}
+                <label className="mt-1.5 flex items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#EFF6F8] text-sm text-[#475569]" data-testid="cv-upload">
+                  {uploadingCv ? <Loader2 className="h-4 w-4 animate-spin text-[#0E7490]" /> : <Upload className="h-4 w-4 text-[#0E7490]" />} {uploadingCv ? "Mengunggah..." : "Pilih berkas CV (PDF)"}
                   <input type="file" accept=".pdf" className="hidden" onChange={onCv} disabled={uploadingCv} />
                 </label>
               )}
@@ -103,14 +103,14 @@ export default function TutorOnboarding() {
                   </div>
                 ))}
               </div>
-              <label className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#F4F7FE] text-sm text-[#475569]" data-testid="cert-upload">
+              <label className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] p-4 cursor-pointer hover:bg-[#EFF6F8] text-sm text-[#475569]" data-testid="cert-upload">
                 {uploadingCert ? <Loader2 className="h-4 w-4 animate-spin text-[#10B981]" /> : <Upload className="h-4 w-4 text-[#10B981]" />} {uploadingCert ? "Mengunggah..." : "Tambah sertifikat"}
                 <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={onCert} disabled={uploadingCert} />
               </label>
             </div>
           </div>
 
-          <Button onClick={finish} disabled={saving} className="w-full h-11 rounded-full bg-[#4361EE] hover:bg-[#344ED0] mt-7" data-testid="onboarding-finish">
+          <Button onClick={finish} disabled={saving} className="w-full h-11 rounded-full bg-[#0E7490] hover:bg-[#0B5C74] mt-7" data-testid="onboarding-finish">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4" /> Simpan & Kirim untuk Verifikasi <ArrowRight className="h-4 w-4" /></>}
           </Button>
         </div>

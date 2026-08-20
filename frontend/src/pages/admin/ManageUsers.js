@@ -17,8 +17,8 @@ import { toast } from "sonner";
 
 const ROLE_BADGE = {
   admin: { l: "Admin", c: "#7C3AED", bg: "#F5F3FF" },
-  student: { l: "Siswa", c: "#4361EE", bg: "#EEF2FF" },
-  tutor: { l: "Tentor", c: "#FF9F1C", bg: "#FFF4E5" },
+  student: { l: "Siswa", c: "#0E7490", bg: "#E6F5F8" },
+  tutor: { l: "Tentor", c: "#C9A227", bg: "#FBF3DC" },
   proctor: { l: "Proktor", c: "#10B981", bg: "#ECFDF5" },
 };
 const STATUS_BADGE = {
@@ -48,9 +48,9 @@ function TutorDocs({ user }) {
     <div className="space-y-2" data-testid="tutor-docs">
       {user.cv_url && (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2">
-          <span className="flex items-center gap-2 text-sm text-[#0A1128] min-w-0"><FileText className="h-4 w-4 text-[#4361EE] shrink-0" /><span className="truncate">{user.cv_name || "CV Tentor"}</span></span>
+          <span className="flex items-center gap-2 text-sm text-[#0A1128] min-w-0"><FileText className="h-4 w-4 text-[#0E7490] shrink-0" /><span className="truncate">{user.cv_name || "CV Tentor"}</span></span>
           <span className="flex items-center gap-1 shrink-0">
-            <a href={fileUrl(user.cv_url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#4361EE] hover:underline px-2 py-1" data-testid="tutor-cv-view">Lihat</a>
+            <a href={fileUrl(user.cv_url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#0E7490] hover:underline px-2 py-1" data-testid="tutor-cv-view">Lihat</a>
             <Button size="sm" variant="outline" className="h-7 rounded-full" onClick={() => downloadDoc(user.cv_url, user.cv_name || "cv.pdf")} data-testid="tutor-cv-download"><Download className="h-3.5 w-3.5" /> Unduh</Button>
           </span>
         </div>
@@ -59,7 +59,7 @@ function TutorDocs({ user }) {
         <div key={i} className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2">
           <span className="flex items-center gap-2 text-sm text-[#0A1128] min-w-0"><Award className="h-4 w-4 text-[#10B981] shrink-0" /><span className="truncate">{c.name || `Sertifikat ${i + 1}`}</span></span>
           <span className="flex items-center gap-1 shrink-0">
-            <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#4361EE] hover:underline px-2 py-1" data-testid={`tutor-cert-view-${i}`}>Lihat</a>
+            <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#0E7490] hover:underline px-2 py-1" data-testid={`tutor-cert-view-${i}`}>Lihat</a>
             <Button size="sm" variant="outline" className="h-7 rounded-full" onClick={() => downloadDoc(c.url, c.name || `sertifikat-${i + 1}`)} data-testid={`tutor-cert-download-${i}`}><Download className="h-3.5 w-3.5" /> Unduh</Button>
           </span>
         </div>
@@ -115,8 +115,8 @@ export default function ManageUsers() {
     <div data-testid="manage-users">
       <PageHeader title="Pengguna & Sekolah Mitra" subtitle="Verifikasi akun, atur peran, dan tautkan sekolah. Proktor hanya melihat siswa sekolahnya."
         actions={<div className="flex gap-2">
-          <Button variant="outline" onClick={() => setSchoolOpen(true)} className="rounded-full hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid="add-school-btn"><School className="h-4 w-4" /> Tambah Sekolah</Button>
-          <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#4361EE] hover:bg-[#344ED0]" data-testid="add-user-btn"><Plus className="h-4 w-4" /> Tambah Pengguna</Button>
+          <Button variant="outline" onClick={() => setSchoolOpen(true)} className="rounded-full hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid="add-school-btn"><School className="h-4 w-4" /> Tambah Sekolah</Button>
+          <Button onClick={() => { setForm(EMPTY); setOpen(true); }} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="add-user-btn"><Plus className="h-4 w-4" /> Tambah Pengguna</Button>
         </div>} />
 
       {/* Schools row */}
@@ -145,7 +145,7 @@ export default function ManageUsers() {
         <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#F4F7FE]">
+              <TableRow className="bg-[#EFF6F8]">
                 <TableHead>Nama & Detail</TableHead>
                 <TableHead>Peran</TableHead>
                 <TableHead className="hidden md:table-cell">Sekolah</TableHead>
@@ -181,10 +181,10 @@ export default function ManageUsers() {
                           </>
                         )}
                         {u.role === "tutor" && (u.cv_url || u.certificates?.length > 0) && (
-                          <Button size="icon" variant="ghost" onClick={() => setDocsUser(u)} className="h-8 w-8 hover:bg-[#FFF4E5] hover:text-[#FF9F1C]" data-testid={`docs-user-${u.id}`} title="Lihat & unduh berkas tentor"><FolderOpen className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setDocsUser(u)} className="h-8 w-8 hover:bg-[#FBF3DC] hover:text-[#C9A227]" data-testid={`docs-user-${u.id}`} title="Lihat & unduh berkas tentor"><FolderOpen className="h-4 w-4" /></Button>
                         )}
                         {u.role !== "admin" && (
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(u)} className="h-8 w-8 hover:bg-[#EEF2FF] hover:text-[#4361EE]" data-testid={`edit-user-${u.id}`}><Settings2 className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(u)} className="h-8 w-8 hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`edit-user-${u.id}`}><Settings2 className="h-4 w-4" /></Button>
                         )}
                         {u.role !== "admin" && (
                           <ConfirmButton onConfirm={() => del(u.id)} trigger={<Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50 hover:text-red-600" data-testid={`delete-user-${u.id}`}><Trash2 className="h-4 w-4" /></Button>} />
@@ -233,7 +233,7 @@ export default function ManageUsers() {
             <div className="space-y-4">
               <p className="text-xs text-[#94A3B8]">{edit.email}{edit.phone ? ` · ${edit.phone}` : ""}{edit.school_name_text ? ` · Sekolah diajukan: ${edit.school_name_text}` : ""}</p>
               {edit.role === "tutor" && (
-                <div className="rounded-lg bg-[#F4F7FE] p-3 space-y-2" data-testid="edit-tutor-docs">
+                <div className="rounded-lg bg-[#EFF6F8] p-3 space-y-2" data-testid="edit-tutor-docs">
                   <p className="text-xs font-semibold text-[#0A1128]">Berkas Tentor (untuk verifikasi)</p>
                   <TutorDocs user={edit} />
                 </div>
@@ -276,7 +276,7 @@ export default function ManageUsers() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEdit(null)}>Batal</Button>
-            <Button onClick={saveEdit} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-edit-user">Simpan</Button>
+            <Button onClick={saveEdit} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-edit-user">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -315,7 +315,7 @@ export default function ManageUsers() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-user">Simpan</Button>
+            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-user">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -330,7 +330,7 @@ export default function ManageUsers() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSchoolOpen(false)}>Batal</Button>
-            <Button onClick={saveSchool} className="bg-[#4361EE] hover:bg-[#344ED0]" data-testid="save-school">Simpan</Button>
+            <Button onClick={saveSchool} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-school">Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
