@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   Users, GraduationCap, ShieldCheck, BookOpen, FileText, CalendarClock,
-  Handshake, ClipboardCheck, ArrowRight, Newspaper, Radio,
+  Handshake, ClipboardCheck, ArrowRight, Newspaper, Radio, BellRing,
 } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import PageHeader from "@/components/common/PageHeader";
@@ -24,6 +24,16 @@ export default function AdminDashboard() {
 
       {loading ? <Loading /> : (
         <>
+          {data.pending_verifications > 0 && (
+            <Link to="/admin/users" data-testid="pending-alert" className="mb-6 flex items-center gap-4 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] p-4 hover:bg-[#FEF3C7] transition-colors duration-200">
+              <div className="h-11 w-11 rounded-xl bg-[#FEF3C7] text-[#B45309] flex items-center justify-center shrink-0"><BellRing className="h-5 w-5" /></div>
+              <div className="flex-1">
+                <p className="font-semibold text-[#0A1128]">{data.pending_verifications} pendaftaran menunggu verifikasi</p>
+                <p className="text-sm text-[#92703A]">Tinjau dan setujui akun siswa/proktor baru agar mereka bisa mengakses portal.</p>
+              </div>
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-[#B45309]">Tinjau <ArrowRight className="h-4 w-4" /></span>
+            </Link>
+          )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             <StatCard icon={GraduationCap} label="Siswa" value={data.students} accent="#4361EE" testid="stat-students" />
             <StatCard icon={Users} label="Tentor" value={data.tutors} accent="#FF9F1C" testid="stat-tutors" />

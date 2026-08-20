@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Newspaper, CalendarDays, BookOpen, CalendarClock, FileText,
   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
-  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library,
+  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog,
 } from "lucide-react";
 import { useAuth, roleLabel } from "@/context/AuthContext";
+import api from "@/lib/api";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const NAV = {
@@ -83,6 +84,28 @@ function Brand() {
   );
 }
 
+function AdminBell() {
+  const navigate = useNavigate();
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => api.get("/admin/pending-count").then((r) => { if (active) setCount(r.data.count || 0); }).catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => { active = false; clearInterval(t); };
+  }, []);
+
+  return (
+    <button onClick={() => navigate("/admin/users")} className="relative p-2 rounded-lg hover:bg-[#EEF2FF] text-[#475569] transition-colors duration-200" data-testid="admin-bell" title="Pendaftaran menunggu verifikasi">
+      <Bell className="h-5 w-5" />
+      {count > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid="admin-bell-badge">{count > 99 ? "99+" : count}</span>
+      )}
+    </button>
+  );
+}
+
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -107,7 +130,10 @@ export default function DashboardLayout() {
       <aside className="hidden lg:flex w-64 bg-white border-r border-[#E2E8F0] flex-col fixed inset-y-0 z-30">
         <Brand />
         <SidebarContent items={items} />
-        <div className="p-3 border-t border-[#E2E8F0]">
+        <div className="p-3 border-t border-[#E2E8F0] space-y-1">
+          <NavLink to="/profile" data-testid="nav-profile" className={({ isActive }) => `w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${isActive ? "bg-[#EEF2FF] text-[#4361EE]" : "text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]"}`}>
+            <UserCog className="h-[18px] w-[18px]" /> Profil Saya
+          </NavLink>
           <button
             onClick={handleLogout}
             data-testid="logout-button"
@@ -132,7 +158,10 @@ export default function DashboardLayout() {
               <SheetContent side="left" className="p-0 w-72 flex flex-col">
                 <Brand />
                 <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} />
-                <div className="p-3 border-t border-[#E2E8F0]">
+                <div className="p-3 border-t border-[#E2E8F0] space-y-1">
+                  <NavLink to="/profile" onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-[#EEF2FF] hover:text-[#4361EE]">
+                    <UserCog className="h-[18px] w-[18px]" /> Profil Saya
+                  </NavLink>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-red-50 hover:text-red-600"
@@ -149,17 +178,20 @@ export default function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-[#0A1128] leading-tight">{user?.name}</p>
-              <p className="text-xs text-[#94A3B8]">{user?.email}</p>
-            </div>
-            {user?.picture ? (
-              <img src={user.picture} alt="avatar" className="h-9 w-9 rounded-full object-cover border border-[#E2E8F0]" />
-            ) : (
-              <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center text-sm font-bold">
-                {initials}
+            {user?.role === "admin" && <AdminBell />}
+            <Link to="/profile" className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#EEF2FF] transition-colors duration-200" data-testid="header-profile-link">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-[#0A1128] leading-tight">{user?.name}</p>
+                <p className="text-xs text-[#94A3B8]">{user?.email}</p>
               </div>
-            )}
+              {user?.picture ? (
+                <img src={user.picture} alt="avatar" className="h-9 w-9 rounded-full object-cover border border-[#E2E8F0]" />
+              ) : (
+                <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center text-sm font-bold">
+                  {initials}
+                </div>
+              )}
+            </Link>
           </div>
         </header>
 

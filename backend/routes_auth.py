@@ -199,3 +199,52 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 @router.get("/me")
 async def me(user: dict = Depends(get_current_user)):
     return user
+
+
+class ProfileBody(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    grade: str | None = None
+    goal: str | None = None
+    school_id: str | None = None
+    school_name_text: str | None = None
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str | None = None
+    new_password: str
+
+
+@router.put("/profile")
+async def update_profile(body: ProfileBody, user: dict = Depends(get_current_user)):
+    updates = {}
+    if body.name is not None:
+        updates["name"] = body.name
+    if body.phone is not None:
+        updates["phone"] = body.phone
+    if user["role"] == "student":
+        if body.grade is not None:
+            updates["grade"] = body.grade
+        if body.goal is not None:
+            updates["goal"] = body.goal
+        if body.school_id is not None:
+            updates["school_id"] = body.school_id or None
+    if user["role"] == "proctor" and body.school_name_text is not None:
+        updates["school_name_text"] = body.school_name_text
+    if not updates:
+        raise HTTPException(status_code=400, detail="Tidak ada perubahan")
+    await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+    return updated
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordBody, user: dict = Depends(get_current_user)):
+    full = await db.users.find_one({"id": user["id"]})
+    if full.get("password_hash"):
+        if not body.current_password or not verify_password(body.current_password, full["password_hash"]):
+            raise HTTPException(status_code=400, detail="Kata sandi saat ini salah")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Kata sandi baru minimal 6 karakter")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    return {"ok": True}

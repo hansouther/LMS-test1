@@ -122,8 +122,14 @@ async def stats(user: dict = Depends(admin_only)):
         "tryouts": await db.tryouts.count_documents({}),
         "open_slots": await db.teaching_slots.count_documents({"status": "open"}),
         "pending_partnerships": await db.partnerships.count_documents({"status": "new"}),
+        "pending_verifications": await db.users.count_documents({"status": "pending"}),
         "total_attempts": await db.attempts.count_documents({"status": "submitted"}),
     }
+
+
+@router.get("/pending-count")
+async def pending_count(user: dict = Depends(admin_only)):
+    return {"count": await db.users.count_documents({"status": "pending"})}
 
 
 # ---------- News ----------

@@ -79,6 +79,35 @@ async def get_courses():
     return items
 
 
+@router.get("/courses/{course_id}")
+async def get_course_detail(course_id: str, response: Response):
+    response.headers["Cache-Control"] = _CACHE
+    course = await db.courses.find_one({"id": course_id, "active": True}, {"_id": 0})
+    if not course:
+        raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    syllabus = [{
+        "id": l["id"],
+        "title": l["title"],
+        "description": l.get("description"),
+        "video_type": l.get("video_type"),
+        "attachment_count": len(l.get("attachments") or []),
+    } for l in lessons]
+    exercise_count = await db.tryouts.count_documents({"course_id": course_id})
+    subject = course.get("subject", "")
+    tutors = await db.users.find(
+        {"role": "tutor", "status": {"$ne": "rejected"}, "qualifications": subject},
+        {"_id": 0, "name": 1, "qualifications": 1, "picture": 1},
+    ).to_list(50)
+    return {
+        "course": course,
+        "syllabus": syllabus,
+        "lesson_count": len(syllabus),
+        "exercise_count": exercise_count,
+        "tutors": tutors,
+    }
+
+
 @router.get("/schools")
 async def get_schools():
     items = await db.schools.find({}, {"_id": 0}).sort("name", 1).to_list(200)

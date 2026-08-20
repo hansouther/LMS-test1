@@ -1,0 +1,19 @@
+{
+  "summary": "Iteration 7 e2e testing: (1) Public course detail — CoursesPage cards link to /kursus/:id; course_utbk has 2 syllabus items + Tim Pengajar fallback; course_phys shows tutor 'Rina Wijaya, S.Pd'; invalid id -> 404 UI. (2) Admin notifications — pending student registration causes admin-bell + admin-bell-badge + pending-alert to appear on /admin dashboard; bell click navigates to /admin/users; after cleanup (pending=0) badge & alert are removed. (3) Profile edit — all 4 roles (student/tutor/proctor/admin) can access /profile via header-profile-link and sidebar. Student phone update persists across reload. Proctor shows profile-school-name field. (4) Change password — student change + login-with-new + revert works; wrong current -> 400; short pwd -> 400. All 11 pytest backend tests passed. All UI checks passed. Cleaned up test users and reverted student demo password.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter7_features.py", "/app/test_reports/pytest/iter7_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes_public.get_course_detail: tutor query filter uses status $ne 'rejected' which correctly excludes rejected tutors but still includes 'pending' tutors. Consider requiring status == 'approved' to avoid leaking unverified tutors publicly.",
+    "AdminBell polls /api/admin/pending-count every 30s; acceptable but a websocket/SSE would be nicer for real-time.",
+    "routes_auth.change_password: allows a Google user (no password_hash) to SET a password without any second-factor check — acceptable since user must already be authenticated, but worth flagging."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@lms.id/Admin@12345, siswa@lms.id/Siswa@12345, tutor@lms.id/Tutor@12345, proktor@lms.id/Proktor@12345",
+  "seed_data_creation": "Registered temporary pending users (pending_iter7_*, test_iter7_*) during pending-flow testing and deleted them via DELETE /api/admin/users/{id}. Student demo password was changed to TempPwd@9876 and reverted back to Siswa@12345.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 7 (Admin bell, public course detail, profile edit + change password) is fully verified end-to-end and needs no rework. Backend pytest suite lives at /app/backend/tests/test_iter7_features.py. Student portal path is /student (not /siswa); proctor is /proctor; admin is /admin. Bell click uses react-router navigate — use await wait_for_url or short timeout after click; do not rely on 'load' event."
+}

@@ -72,6 +72,12 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - **Proktor "Kegiatan Pelatihan"** (`/proctor/trainings`): daftar kursus yang diikuti siswa sekolahnya + jumlah peserta + nama siswa. `GET /api/proctor/trainings`.
 - Testing iterasi 6: 14/14 backend + 11/11 UI PASS (iteration_4.json). Tidak ada bug. Data uji dibersihkan; akun demo utuh & tetap berfungsi.
 
+## Implemented — Iterasi 7: Notifikasi Admin, Detail Kursus Publik & Edit Profil (2026-08-20)
+- **Notifikasi Admin**: lonceng di header admin (badge jumlah pendaftaran menunggu, polling 30s, klik → /admin/users) + banner alert di dashboard admin. Endpoint `GET /api/admin/pending-count` + field `pending_verifications` di `/admin/stats`.
+- **Detail Kursus Publik** (`/kursus/:id`, CourseDetail): tanpa login — hero (judul/harga/CTA daftar), silabus (daftar pelajaran), tentor (cocok kualifikasi = subjek kursus; fallback "Tim Pengajar CendekiaLMS"), ringkasan benefit. Kartu di /kursus menaut ke detail. `GET /api/public/courses/{id}` (404 bila tidak ada). SEO via useSeo (OG per-kursus).
+- **Edit Profil semua role** (`/profile`, Profile): ubah nama, WhatsApp; siswa juga kelas/target/asal sekolah; proktor nama sekolah. Ubah kata sandi (verifikasi sandi lama; Google set sandi baru). `PUT /api/auth/profile` + `POST /api/auth/change-password`. Diakses via avatar header (header-profile-link) & menu sidebar "Profil Saya" (nav-profile) di semua portal.
+- Testing iterasi 7: 100% backend + 100% frontend PASS (iteration_5.json). Tidak ada bug. Data uji dibersihkan; sandi demo dikembalikan; 10 akun demo utuh.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

@@ -13,6 +13,8 @@ import CalendarPage from "@/pages/public/CalendarPage";
 import NewsPage from "@/pages/public/NewsPage";
 import NewsDetail from "@/pages/public/NewsDetail";
 import CoursesPage from "@/pages/public/CoursesPage";
+import CourseDetail from "@/pages/public/CourseDetail";
+import Profile from "@/pages/Profile";
 
 import StudentDashboard from "@/pages/student/StudentDashboard";
 import LearningRoom from "@/pages/student/LearningRoom";
@@ -65,6 +67,14 @@ function AppRoutes() {
       <Route path="/berita" element={<NewsPage />} />
       <Route path="/berita/:id" element={<NewsDetail />} />
       <Route path="/kursus" element={<CoursesPage />} />
+      <Route path="/kursus/:id" element={<CourseDetail />} />
+
+      {/* Shared profile (any authenticated & verified role) */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+      </Route>
 
       {/* Student */}
       <Route element={<ProtectedRoute roles={["student"]} />}>

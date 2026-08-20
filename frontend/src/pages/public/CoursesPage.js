@@ -43,17 +43,19 @@ export default function CoursesPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((c) => (
                 <div key={c.id} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col hover:-translate-y-1 transition-transform duration-200" data-testid={`public-course-${c.id}`}>
-                  <div className="h-36 bg-gradient-to-br from-[#4361EE] to-[#7C3AED] relative">
-                    {c.thumbnail && <img src={c.thumbnail} alt={c.title} className="h-full w-full object-cover" />}
-                    <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#0A1128]">{c.subject}</span>
-                  </div>
+                  <Link to={`/kursus/${c.id}`} className="block">
+                    <div className="h-36 bg-gradient-to-br from-[#4361EE] to-[#7C3AED] relative">
+                      {c.thumbnail && <img src={c.thumbnail} alt={c.title} className="h-full w-full object-cover" />}
+                      <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#0A1128]">{c.subject}</span>
+                    </div>
+                  </Link>
                   <div className="p-5 flex flex-col flex-1">
                     <p className="text-xs text-[#94A3B8]">{c.level}</p>
-                    <h3 className="mt-1 font-semibold text-[#0A1128]">{c.title}</h3>
+                    <Link to={`/kursus/${c.id}`}><h3 className="mt-1 font-semibold text-[#0A1128] hover:text-[#4361EE] transition-colors duration-200">{c.title}</h3></Link>
                     <p className="mt-2 text-sm text-[#475569] line-clamp-3 flex-1">{c.description}</p>
                     <div className="mt-4 flex items-center justify-between">
                       <span className="font-head font-bold text-[#4361EE]">{formatRupiah(parseInt(c.price || 0, 10))}</span>
-                      <Link to="/register"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#4361EE] hover:bg-[#344ED0] text-white text-sm font-medium px-4 py-2 transition-colors duration-200" data-testid={`public-course-cta-${c.id}`}>Daftar <ArrowRight className="h-3.5 w-3.5" /></span></Link>
+                      <Link to={`/kursus/${c.id}`}><span className="inline-flex items-center gap-1.5 rounded-full bg-[#4361EE] hover:bg-[#344ED0] text-white text-sm font-medium px-4 py-2 transition-colors duration-200" data-testid={`public-course-cta-${c.id}`}>Lihat Detail <ArrowRight className="h-3.5 w-3.5" /></span></Link>
                     </div>
                   </div>
                 </div>
