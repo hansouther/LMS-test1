@@ -205,13 +205,22 @@ export default function ManageUsers() {
           <DialogHeader><DialogTitle>Berkas Tentor — {docsUser?.name}</DialogTitle></DialogHeader>
           {docsUser && (
             <div className="space-y-3">
-              <p className="text-xs text-[#94A3B8]">{docsUser.email}{docsUser.phone ? ` · ${docsUser.phone}` : ""}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-[#94A3B8]">{docsUser.email}{docsUser.phone ? ` · ${docsUser.phone}` : ""}</p>
+                {(() => { const st = STATUS_BADGE[docsUser.status || "approved"]; return <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ color: st.c, backgroundColor: st.bg }}>{st.l}</span>; })()}
+              </div>
               <TutorDocs user={docsUser} />
-              <p className="text-[11px] text-[#94A3B8]">Tinjau CV & sertifikat sebelum menyetujui akun tentor.</p>
+              <p className="text-[11px] text-[#94A3B8]">Tinjau CV & sertifikat, lalu setujui atau tolak akun tentor.</p>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
             <Button variant="outline" onClick={() => setDocsUser(null)}>Tutup</Button>
+            {docsUser && (docsUser.status || "approved") === "pending" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={async () => { await quickVerify(docsUser.id, "rejected"); setDocsUser(null); }} className="rounded-full hover:bg-red-50 hover:text-red-600" data-testid="docs-reject-tutor"><XCircle className="h-4 w-4" /> Tolak</Button>
+                <Button onClick={async () => { await quickVerify(docsUser.id, "approved"); setDocsUser(null); }} className="rounded-full bg-[#10B981] hover:bg-[#0ea371]" data-testid="docs-approve-tutor"><CheckCircle2 className="h-4 w-4" /> Setujui Tentor</Button>
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
