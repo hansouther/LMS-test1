@@ -1,4 +1,4 @@
-import { Download, Target, TrendingUp, TrendingDown, Minus, ClipboardList, Users, BookOpen } from "lucide-react";
+import { Download, Target, TrendingUp, TrendingDown, Minus, ClipboardList, Users, BookOpen, Sparkles } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
@@ -167,6 +167,33 @@ export default function WeaknessReportView({ apiBase, title, subtitle }) {
               </TableBody>
             </Table>
           </div>
+
+          {/* Recommendations per student */}
+          <h2 className="mt-8 mb-4 font-semibold text-[#0A1128] flex items-center gap-2"><Sparkles className="h-5 w-5 text-[#4361EE]" /> Rekomendasi Latihan per Siswa</h2>
+          {(() => {
+            const withRec = recap.filter((r) => r.recommendations && ((r.recommendations.exercises?.length || 0) + (r.recommendations.courses?.length || 0) > 0));
+            if (!withRec.length) return <p className="text-sm text-[#94A3B8]">Belum ada rekomendasi latihan yang cocok. Tambahkan kursus/latihan pada mata pelajaran terkait.</p>;
+            return (
+              <div className="grid md:grid-cols-2 gap-4" data-testid="recommendations-section">
+                {withRec.map((r, i) => (
+                  <div key={r.student_id} className="bg-white rounded-xl border border-[#E2E8F0] p-4" data-testid={`rec-student-${i}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-[#0A1128] truncate">{r.name}</p>
+                      <span className="text-xs text-[#94A3B8] shrink-0">{r.weakest_subject} · {r.weakest_competency}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {r.recommendations.exercises?.map((t) => (
+                        <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] text-[#4361EE] px-2.5 py-0.5 text-[11px] font-medium"><ClipboardList className="h-3 w-3" /> {t.title}</span>
+                      ))}
+                      {r.recommendations.courses?.map((c) => (
+                        <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] text-[#10B981] px-2.5 py-0.5 text-[11px] font-medium"><BookOpen className="h-3 w-3" /> {c.title}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

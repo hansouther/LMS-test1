@@ -114,6 +114,14 @@ Bangun platform Learning Management System (LMS) berbasis Role-Based Access Cont
 - Testing iterasi 13 (iteration_13.json): frontend 100% PASS; backend curl-verified (simpan lowercase+dupe → tersimpan bersih; slot Fisika tetap qualified dengan qual lowercase). Data tentor demo dipulihkan (`['Matematika','Fisika','Kimia']`, cv_url null); 10 akun seed utuh.
 - Catatan minor (belum di-scope): `PUT /auth/profile` belum bisa meng-null-kan cv_url (null dianggap skip) — hanya ganti CV yang didukung.
 
+## Implemented — Iterasi 13: Kelola Sertifikat di Profil & Rekomendasi Latihan Otomatis (2026-06)
+- **Kelola Sertifikat di Profil** (`/profile`, tentor): kartu "Sertifikat" untuk tambah/hapus sertifikat (PDF atau gambar PNG/JPEG, gambar maks 2 MB) langsung dari profil — tidak hanya saat onboarding. Simpan via `PUT /api/auth/profile` (array `certificates`).
+- **Rekomendasi Latihan otomatis** berdasarkan area terlemah (mapel + Numerasi/Literasi) dari hasil analisis:
+  - Logika di `analysis.py` (`_recommend`): kursus aktif (subject match) + Try Out/latihan terbit (subject match ATAU memuat soal kompetensi terlemah).
+  - **Dashboard siswa**: kartu "Rekomendasi Latihan untuk Kamu" (`StudentRecommendations.jsx`) via `GET /api/student/recommendations`.
+  - **Laporan Analisis Kelemahan (Admin & Proktor)**: seksi "Rekomendasi Latihan per Siswa" per siswa (di `WeaknessReportView.jsx`, dari `recap[].recommendations`).
+- Testing iterasi 14 (iteration_14.json): frontend 100% PASS (sertifikat add/remove + validasi 2MB, rekomendasi siswa & staff). Backend curl-verified. Data tentor demo dipulihkan (3 kualifikasi, cv null, certificates []); 10 akun seed utuh.
+
 ## Backlog / Next (P1/P2)
 - P1: Retake/multiple attempt & bank soal impor massal; timer server-side enforcement.
 - P1: Notifikasi email (Resend) untuk pengumuman & konfirmasi bidding.

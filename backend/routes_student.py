@@ -7,9 +7,28 @@ from database import db
 from utils import new_id, now_iso, class_sessions
 from security import require_roles
 from grading import strip_answers, grade_attempt
+import analysis
 
 router = APIRouter(prefix="/api/student", tags=["student"])
 student_only = require_roles("student")
+
+
+@router.get("/recommendations")
+async def recommendations(user: dict = Depends(student_only)):
+    """Rekomendasi latihan/materi otomatis untuk area terlemah siswa (dari hasil analisis)."""
+    rep = await analysis.build_report([user["id"]])
+    if not rep["recap"]:
+        return {"has_data": False, "recommendations": None}
+    r = rep["recap"][0]
+    return {
+        "has_data": True,
+        "avg": r["avg_percentage"],
+        "weakest_subject": r["weakest_subject"],
+        "weakest_competency": r["weakest_competency"],
+        "numerasi_pct": r["numerasi_pct"],
+        "literasi_pct": r["literasi_pct"],
+        "recommendations": r["recommendations"],
+    }
 
 
 class SubmitBody(BaseModel):

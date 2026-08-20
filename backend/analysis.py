@@ -49,13 +49,48 @@ async def build_report(student_ids=None):
     schools = await db.schools.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)
     school_map = {s["id"]: s["name"] for s in schools}
     tryouts = await db.tryouts.find(
-        {}, {"_id": 0, "id": 1, "title": 1, "subject": 1, "kind": 1, "start_at": 1}
+        {}, {"_id": 0, "id": 1, "title": 1, "subject": 1, "kind": 1, "start_at": 1, "published": 1, "course_id": 1}
     ).to_list(1000)
     tmap = {t["id"]: t for t in tryouts}
     questions = await db.questions.find(
         {}, {"_id": 0, "id": 1, "competency": 1, "text": 1, "tryout_id": 1, "order": 1}
     ).to_list(50000)
     qmap = {q["id"]: q for q in questions}
+    courses = await db.courses.find(
+        {"active": True}, {"_id": 0, "id": 1, "title": 1, "subject": 1, "level": 1}
+    ).to_list(500)
+
+    # ---- recommendation lookups (materi/latihan untuk area terlemah) ----
+    pub_tryouts = [t for t in tryouts if t.get("published")]
+    subj_tryouts, comp_tryouts = {}, {"numerasi": set(), "literasi": set()}
+    for t in pub_tryouts:
+        subj_tryouts.setdefault((t.get("subject") or "").strip().lower(), []).append(t)
+    for q in questions:
+        c = norm_comp(q.get("competency"))
+        if c in comp_tryouts and q.get("tryout_id"):
+            comp_tryouts[c].add(q["tryout_id"])
+    subj_courses = {}
+    for c in courses:
+        subj_courses.setdefault((c.get("subject") or "").strip().lower(), []).append(c)
+
+    def _recommend(weak_subject, weak_comp):
+        ws = (weak_subject or "").strip().lower()
+        wc = (weak_comp or "").strip().lower()
+        rec_courses = subj_courses.get(ws, [])[:3]
+        ex = list(subj_tryouts.get(ws, []))
+        ex_ids = {t["id"] for t in ex}
+        if wc in comp_tryouts:
+            for t in pub_tryouts:
+                if t["id"] in comp_tryouts[wc] and t["id"] not in ex_ids:
+                    ex.append(t); ex_ids.add(t["id"])
+        ex = ex[:5]
+        return {
+            "focus_subject": weak_subject or None,
+            "focus_competency": weak_comp or None,
+            "courses": [{"id": c["id"], "title": c["title"], "subject": c.get("subject")} for c in rec_courses],
+            "exercises": [{"id": t["id"], "title": t["title"], "subject": t.get("subject"),
+                           "kind": t.get("kind"), "course_id": t.get("course_id")} for t in ex],
+        }
 
     # ---- scores: per attempt ----
     scores = []
@@ -128,6 +163,7 @@ async def build_report(student_ids=None):
             "literasi_pct": lit_pct,
             "weakest_competency": weakest_comp,
             "trend": trend,
+            "recommendations": _recommend(weakest_subject, weakest_comp),
         })
     recap.sort(key=lambda r: r["avg_percentage"])
 

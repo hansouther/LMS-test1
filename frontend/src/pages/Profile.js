@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { UserCog, Save, KeyRound, Loader2, GraduationCap, FileText, Upload, X, Plus } from "lucide-react";
+import { UserCog, Save, KeyRound, Loader2, GraduationCap, FileText, Upload, X, Plus, Award } from "lucide-react";
 import api, { apiError } from "@/lib/api";
 import { fileUrl } from "@/lib/media";
 import { useAuth, roleLabel } from "@/context/AuthContext";
@@ -23,13 +23,16 @@ export default function Profile() {
   const [savingQuals, setSavingQuals] = useState(false);
   const [uploadingCv, setUploadingCv] = useState(false);
   const cvRef = useRef();
+  const [certs, setCerts] = useState([]);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const certRef = useRef();
 
   useEffect(() => {
     if (user) setForm({
       name: user.name || "", phone: user.phone || "", grade: user.grade || "",
       goal: user.goal || "", school_id: user.school_id || "", school_name_text: user.school_name_text || "",
     });
-    if (user?.role === "tutor") setQuals(user.qualifications || []);
+    if (user?.role === "tutor") { setQuals(user.qualifications || []); setCerts(user.certificates || []); }
     if (user?.role === "student") api.get("/public/schools").then((r) => setSchools(r.data)).catch(() => {});
   }, [user]);
 
@@ -90,6 +93,30 @@ export default function Profile() {
       setUser(updated);
       toast.success("CV berhasil diperbarui");
     } catch (err) { toast.error(apiError(err)); } finally { setUploadingCv(false); e.target.value = ""; }
+  };
+  const onCertChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    if (!["pdf", "png", "jpg", "jpeg"].includes(ext)) { toast.error("Sertifikat harus PDF, PNG, atau JPEG"); e.target.value = ""; return; }
+    if (["png", "jpg", "jpeg"].includes(ext) && file.size > 2 * 1024 * 1024) { toast.error("Ukuran gambar sertifikat maksimal 2 MB"); e.target.value = ""; return; }
+    setUploadingCert(true);
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const { data } = await api.post("/auth/upload-doc", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const next = [...certs, { name: data.name, url: data.url }];
+      const { data: updated } = await api.put("/auth/profile", { certificates: next });
+      setUser(updated); setCerts(updated.certificates || next);
+      toast.success("Sertifikat ditambahkan");
+    } catch (err) { toast.error(apiError(err)); } finally { setUploadingCert(false); e.target.value = ""; }
+  };
+  const removeCert = async (idx) => {
+    const next = certs.filter((_, i) => i !== idx);
+    try {
+      const { data: updated } = await api.put("/auth/profile", { certificates: next });
+      setUser(updated); setCerts(updated.certificates || next);
+      toast.success("Sertifikat dihapus");
+    } catch (err) { toast.error(apiError(err)); }
   };
 
   if (!user) return null;
@@ -163,7 +190,7 @@ export default function Profile() {
       </div>
 
       {user.role === "tutor" && (
-        <div className="mt-6 grid lg:grid-cols-2 gap-6" data-testid="tutor-profile-section">
+        <div className="mt-6 space-y-6" data-testid="tutor-profile-section">
           {/* Qualifications editor */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6" data-testid="qualifications-card">
             <div className="flex items-center gap-3 mb-4">
@@ -200,6 +227,7 @@ export default function Profile() {
             </div>
           </div>
 
+          <div className="grid lg:grid-cols-2 gap-6">
           {/* CV update */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit" data-testid="cv-card">
             <div className="flex items-center gap-3 mb-4">
@@ -222,6 +250,32 @@ export default function Profile() {
                 {uploadingCv ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4" /> {user.cv_url ? "Ganti CV" : "Unggah CV"}</>}
               </Button>
             </div>
+          </div>
+
+          {/* Certificates management */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 h-fit" data-testid="certificates-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-11 w-11 rounded-xl bg-[#FFF4E5] text-[#FF9F1C] flex items-center justify-center"><Award className="h-5 w-5" /></div>
+              <div>
+                <h3 className="font-semibold text-[#0A1128]">Sertifikat</h3>
+                <p className="text-xs text-[#94A3B8]">Tambah/hapus sertifikat (PDF atau gambar, maks 2 MB).</p>
+              </div>
+            </div>
+            <div className="space-y-2" data-testid="certificates-list">
+              {certs.length ? certs.map((c, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2" data-testid={`cert-item-${i}`}>
+                  <a href={fileUrl(c.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#4361EE] hover:underline min-w-0"><Award className="h-4 w-4 text-[#FF9F1C] shrink-0" /><span className="truncate">{c.name || `Sertifikat ${i + 1}`}</span></a>
+                  <button type="button" onClick={() => removeCert(i)} className="text-[#94A3B8] hover:text-[#EF4444] shrink-0" data-testid={`cert-remove-${i}`}><X className="h-4 w-4" /></button>
+                </div>
+              )) : <p className="text-sm text-[#94A3B8]" data-testid="certificates-empty">Belum ada sertifikat.</p>}
+            </div>
+            <input ref={certRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" onChange={onCertChange} data-testid="cert-file-input" />
+            <div className="mt-4">
+              <Button type="button" onClick={() => certRef.current?.click()} disabled={uploadingCert} variant="outline" className="rounded-full border-[#CBD5E1] hover:bg-[#FFF4E5] hover:text-[#FF9F1C]" data-testid="cert-upload-btn">
+                {uploadingCert ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Tambah Sertifikat</>}
+              </Button>
+            </div>
+          </div>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/common/PageHeader";
 import StatCard from "@/components/common/StatCard";
 import { Loading, Empty } from "@/components/common/States";
+import StudentRecommendations from "@/components/common/StudentRecommendations";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 
@@ -63,6 +64,8 @@ export default function StudentDashboard() {
               </div>
             ) : <Empty icon={Trophy} title="Belum ada hasil" desc="Kerjakan Try Out pertama Anda untuk melihat nilai di sini." />}
           </div>
+
+          <StudentRecommendations />
 
           {data.badges?.length > 0 && (
             <div className="mt-8 rounded-2xl bg-white border border-[#E2E8F0] p-6" data-testid="dashboard-badges">
