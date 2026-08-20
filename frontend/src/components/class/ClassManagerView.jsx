@@ -25,6 +25,7 @@ export default function ClassManagerView() {
   const [active, setActive] = useState(null);
   const [materialSession, setMaterialSession] = useState(null);
   const [attSession, setAttSession] = useState(null);
+  const [recap, setRecap] = useState(null);
 
   return (
     <div data-testid="class-manager">
@@ -36,16 +37,19 @@ export default function ClassManagerView() {
         <div className="space-y-4">
           {classes.map((c) => (
             <div key={c.id} className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden" data-testid={`class-${c.id}`}>
-              <button onClick={() => setActive(active === c.id ? null : c.id)} className="w-full p-5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors duration-200" data-testid={`class-toggle-${c.id}`}>
-                <div className="flex items-center gap-4">
+              <div className="w-full p-5 flex items-center justify-between gap-3">
+                <button onClick={() => setActive(active === c.id ? null : c.id)} className="flex items-center gap-4 text-left flex-1 min-w-0" data-testid={`class-toggle-${c.id}`}>
                   <div className="h-12 w-12 rounded-xl bg-[#EEF2FF] text-[#4361EE] flex items-center justify-center shrink-0"><Users className="h-6 w-6" /></div>
-                  <div>
-                    <p className="font-semibold text-[#0A1128]">{c.title}</p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#0A1128] truncate">{c.title}</p>
                     <p className="text-xs text-[#94A3B8] mt-0.5">{c.subject} · {c.sessions.length} pertemuan · {c.material_count} materi{c.course_title ? ` · ${c.course_title}` : ""}{!isTutor ? ` · ${c.tutor_name}` : ""}</p>
                   </div>
+                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => setRecap(c)} className="rounded-full hover:bg-[#ECFDF5] hover:text-[#10B981]" data-testid={`recap-btn-${c.id}`}><ClipboardCheck className="h-4 w-4" /> Rekap</Button>
+                  <button onClick={() => setActive(active === c.id ? null : c.id)}><ChevronRight className={`h-5 w-5 text-[#94A3B8] transition-transform duration-200 ${active === c.id ? "rotate-90" : ""}`} /></button>
                 </div>
-                <ChevronRight className={`h-5 w-5 text-[#94A3B8] transition-transform duration-200 ${active === c.id ? "rotate-90" : ""}`} />
-              </button>
+              </div>
 
               {active === c.id && (
                 <div className="border-t border-[#E2E8F0] divide-y divide-[#F1F5F9]" data-testid={`class-sessions-${c.id}`}>
@@ -76,7 +80,40 @@ export default function ClassManagerView() {
 
       {materialSession && <MaterialDialog data={materialSession} onClose={() => setMaterialSession(null)} />}
       {attSession && <AttendanceDialog data={attSession} isTutor={isTutor} onClose={() => setAttSession(null)} />}
+      {recap && <RecapDialog cls={recap} onClose={() => setRecap(null)} />}
     </div>
+  );
+}
+
+function RecapDialog({ cls, onClose }) {
+  const { data, loading } = useFetch(`/classes/${cls.id}/attendance-summary`);
+  const rateColor = (r) => r >= 80 ? "#10B981" : r >= 50 ? "#FF9F1C" : "#EF4444";
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg" data-testid="recap-dialog">
+        <DialogHeader><DialogTitle>Rekap Kehadiran — {cls.title}</DialogTitle></DialogHeader>
+        {loading ? <Loading /> : !data?.rows?.length ? (
+          <p className="text-sm text-[#94A3B8] py-6 text-center">Belum ada siswa terdaftar.</p>
+        ) : (
+          <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+            <p className="text-xs text-[#94A3B8]">Dari {data.total_sessions} pertemuan</p>
+            {data.rows.map((r) => (
+              <div key={r.student_id} className="rounded-lg border border-[#E2E8F0] p-3" data-testid={`recap-row-${r.student_id}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-sm font-medium text-[#0A1128]">{r.name}</p>
+                  <span className="text-sm font-bold" style={{ color: rateColor(r.rate) }}>{r.rate}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${r.rate}%`, backgroundColor: rateColor(r.rate) }} />
+                </div>
+                <p className="text-[11px] text-[#94A3B8] mt-1.5">Hadir {r.present} · Terlambat {r.late} · Absen {r.absent} · Total {r.total_sessions}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <DialogFooter><Button variant="outline" onClick={onClose}>Tutup</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

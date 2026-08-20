@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
-export const TYPE_COLOR = { exam: "#EF4444", deadline: "#FF9F1C", holiday: "#10B981", event: "#7C3AED", academic: "#4361EE" };
-export const TYPE_LABEL = { exam: "Ujian", deadline: "Tenggat", holiday: "Libur", event: "Acara", academic: "Akademik" };
+export const TYPE_COLOR = { exam: "#EF4444", deadline: "#FF9F1C", holiday: "#10B981", event: "#7C3AED", academic: "#4361EE", class: "#0EA5E9" };
+export const TYPE_LABEL = { exam: "Ujian", deadline: "Tenggat", holiday: "Libur", event: "Acara", academic: "Akademik", class: "Kelas Pelatihan" };
 const WD = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -114,7 +114,10 @@ export default function MonthCalendar({ events = [], initialDate, showList = tru
                 <div>
                   <p className="font-semibold text-sm text-[#0A1128]">{c.title}</p>
                   {c.description && <p className="text-xs text-[#475569] mt-0.5">{c.description}</p>}
-                  <p className="text-[11px] text-[#94A3B8] mt-0.5">{formatDate(c.date)} · {TYPE_LABEL[c.type] || "Agenda"}</p>
+                  {c.tutor && <p className="text-xs text-[#0EA5E9] mt-0.5 font-medium">Pengajar: {c.tutor}</p>}
+                  <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                    {formatDate(c.date)}{c.start_time ? ` · ${c.start_time}-${c.end_time}` : ""} · {TYPE_LABEL[c.type] || "Agenda"}
+                  </p>
                 </div>
               </div>
             ))}

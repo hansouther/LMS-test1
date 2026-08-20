@@ -156,3 +156,15 @@ async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: s
             f'<p>Masuk ke portal siswa lalu buka menu CBT / Try Out untuk mulai mengerjakan.</p>'
         )
         await notify_safe(r["email"], subject, _shell(inner))
+
+
+async def notify_new_material(recipients: list, class_title: str, item_label: str):
+    subject = f"Pembaruan kelas: {class_title}"
+    for r in recipients:
+        inner = (
+            f'<p>Halo {escape(r.get("name") or "Siswa")},</p>'
+            f'<p>Ada pembaruan pada kelas <strong>{escape(class_title)}</strong>:</p>'
+            f'<p style="font-size:16px"><strong>{escape(item_label)}</strong></p>'
+            f'<p>Masuk ke portal siswa lalu buka menu Jadwal untuk melihat detailnya.</p>'
+        )
+        await notify_safe(r["email"], subject, _shell(inner))

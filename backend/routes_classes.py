@@ -5,6 +5,8 @@ from typing import List, Optional
 from database import db
 from utils import new_id, now_iso, class_sessions
 from security import require_roles
+import notifications
+from emailer import notify_new_material
 
 router = APIRouter(prefix="/api/classes", tags=["classes"])
 manager = require_roles("tutor", "admin")
@@ -116,7 +118,46 @@ async def add_material(slot_id: str, session_id: str, body: MaterialBody, user: 
         "created_by": user["id"], "creator_role": user["role"], "created_at": now_iso(),
     }
     await db.class_materials.insert_one(doc)
+    # Notify enrolled students (in-app + best-effort email)
+    session_no = next((s["no"] for s in class_sessions(slot) if s["id"] == session_id), "?")
+    sids = await notifications.course_student_ids(slot.get("course_id"))
+    if sids:
+        await notifications.push(
+            sids, "material",
+            f"Materi baru: {body.title}",
+            f'Pertemuan {session_no} kelas "{slot.get("title")}"',
+            "/student/schedule",
+        )
+        students = await db.users.find({"id": {"$in": sids}}, {"_id": 0, "email": 1, "name": 1}).to_list(2000)
+        await notify_new_material(students, slot.get("title", "Kelas"), f"Materi baru pada pertemuan {session_no}: {body.title}")
     return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@router.get("/{slot_id}/attendance-summary")
+async def attendance_summary(slot_id: str, user: dict = Depends(manager)):
+    slot = await _get_class(slot_id, user)
+    sessions = class_sessions(slot)
+    total = len(sessions)
+    students = await _course_students(slot.get("course_id"))
+    att = await db.attendance.find({"slot_id": slot_id}, {"_id": 0}).to_list(5000)
+    counts = {}
+    for a in att:
+        c = counts.setdefault(a["student_id"], {"present": 0, "late": 0, "absent": 0})
+        st = a.get("status", "present")
+        if st in c:
+            c[st] += 1
+    rows = []
+    for s in students:
+        c = counts.get(s["id"], {"present": 0, "late": 0, "absent": 0})
+        attended = c["present"] + c["late"]
+        rate = round(attended / total * 100) if total else 0
+        rows.append({
+            "student_id": s["id"], "name": s["name"],
+            "present": c["present"], "late": c["late"], "absent": c["absent"],
+            "total_sessions": total, "rate": rate,
+        })
+    rows.sort(key=lambda r: r["rate"], reverse=True)
+    return {"total_sessions": total, "rows": rows}
 
 
 @router.delete("/materials/{material_id}")

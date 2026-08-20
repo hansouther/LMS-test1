@@ -50,6 +50,7 @@ import LiveMonitoring from "@/pages/proctor/LiveMonitoring";
 import Analytics from "@/pages/proctor/Analytics";
 import Reports from "@/pages/proctor/Reports";
 import ProctorTrainings from "@/pages/proctor/Trainings";
+import ProctorAttendance from "@/pages/proctor/Attendance";
 import RegisterProctor from "@/pages/RegisterProctor";
 import PendingVerification from "@/pages/PendingVerification";
 
@@ -128,6 +129,7 @@ function AppRoutes() {
           <Route path="/proctor/monitoring" element={<LiveMonitoring />} />
           <Route path="/proctor/analytics" element={<Analytics />} />
           <Route path="/proctor/trainings" element={<ProctorTrainings />} />
+          <Route path="/proctor/attendance" element={<ProctorAttendance />} />
           <Route path="/proctor/reports" element={<Reports />} />
         </Route>
       </Route>

@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 
 from database import db
 from security import require_roles
+from utils import class_sessions
 
 router = APIRouter(prefix="/api/proctor", tags=["proctor"])
 proctor_only = require_roles("proctor")
@@ -179,6 +180,42 @@ async def analytics(user: dict = Depends(proctor_only)):
 @router.get("/broadcasts")
 async def broadcasts(user: dict = Depends(proctor_only)):
     return await db.broadcasts.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+
+@router.get("/attendance")
+async def attendance_recap(user: dict = Depends(proctor_only)):
+    students = await _school_students(user.get("school_id"))
+    if not students:
+        return []
+    student_ids = [s["id"] for s in students]
+    enrolls = await db.enrollments.find({"student_id": {"$in": student_ids}}, {"_id": 0}).to_list(5000)
+    by_student_courses = {}
+    for e in enrolls:
+        by_student_courses.setdefault(e["student_id"], set()).add(e["course_id"])
+    slots = await db.teaching_slots.find({"status": "confirmed"}, {"_id": 0}).to_list(500)
+    sessions_by_course = {}
+    for sl in slots:
+        cid = sl.get("course_id")
+        if not cid:
+            continue
+        sessions_by_course[cid] = sessions_by_course.get(cid, 0) + len(class_sessions(sl))
+    att = await db.attendance.find({"student_id": {"$in": student_ids}}, {"_id": 0}).to_list(20000)
+    attended_by_student = {}
+    for a in att:
+        if a.get("status") in ("present", "late"):
+            attended_by_student[a["student_id"]] = attended_by_student.get(a["student_id"], 0) + 1
+    rows = []
+    for s in students:
+        courses = by_student_courses.get(s["id"], set())
+        total = sum(sessions_by_course.get(c, 0) for c in courses)
+        attended = attended_by_student.get(s["id"], 0)
+        rate = round(attended / total * 100) if total else 0
+        rows.append({
+            "student_id": s["id"], "name": s["name"], "grade": s.get("grade"),
+            "attended": attended, "total_sessions": total, "rate": rate,
+        })
+    rows.sort(key=lambda r: r["rate"], reverse=True)
+    return rows
 
 
 @router.get("/trainings")

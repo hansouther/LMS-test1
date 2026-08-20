@@ -12,8 +12,9 @@ import openpyxl
 from database import db
 from utils import new_id, now_iso
 from security import require_roles, hash_password
-from emailer import notify_new_tryout, notify_bid_accepted
+from emailer import notify_new_tryout, notify_bid_accepted, notify_new_material
 from storage import put_object, MIME_TYPES, APP_NAME
+import notifications
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_only = require_roles("admin")
@@ -294,6 +295,7 @@ async def update_slot(slot_id: str, body: SlotBody, user: dict = Depends(admin_o
     if not sessions:
         raise HTTPException(status_code=400, detail="Minimal satu pertemuan diperlukan")
     first = sessions[0]
+    old_count = len(slot.get("sessions") or [])
     updates = {
         "title": body.title, "subject": body.subject,
         "required_qualifications": body.required_qualifications,
@@ -302,6 +304,19 @@ async def update_slot(slot_id: str, body: SlotBody, user: dict = Depends(admin_o
         "start_time": first["start_time"], "end_time": first["end_time"],
     }
     await db.teaching_slots.update_one({"id": slot_id}, {"$set": updates})
+    # Notify students if new sessions were added to a confirmed class
+    if slot.get("status") == "confirmed" and len(sessions) > old_count:
+        added = len(sessions) - old_count
+        sids = await notifications.course_student_ids(body.course_id)
+        if sids:
+            await notifications.push(
+                sids, "session",
+                f"{added} pertemuan baru ditambahkan",
+                f'Kelas "{body.title}" kini memiliki {len(sessions)} pertemuan',
+                "/student/schedule",
+            )
+            students = await db.users.find({"id": {"$in": sids}}, {"_id": 0, "email": 1, "name": 1}).to_list(2000)
+            await notify_new_material(students, body.title, f"{added} pertemuan baru ditambahkan ke jadwal kelas")
     return {"ok": True}
 
 

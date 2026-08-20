@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 
 from database import db
-from utils import new_id, now_iso
+from utils import new_id, now_iso, class_sessions
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -43,6 +43,26 @@ async def get_news_item(news_id: str, response: Response):
 async def get_calendar(response: Response):
     response.headers["Cache-Control"] = _CACHE
     items = await db.calendar_events.find({}, {"_id": 0}).sort("date", 1).to_list(200)
+    # Merge confirmed class sessions so the public calendar shows live class activity
+    slots = await db.teaching_slots.find({"status": "confirmed"}, {"_id": 0}).to_list(500)
+    tutor_ids = list({s.get("tutor_id") for s in slots if s.get("tutor_id")})
+    tutors = await db.users.find({"id": {"$in": tutor_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(500)
+    tmap = {t["id"]: t["name"] for t in tutors}
+    for sl in slots:
+        tutor_name = tmap.get(sl.get("tutor_id"), "Tim Pengajar")
+        for se in class_sessions(sl):
+            items.append({
+                "id": f"cls_{sl['id']}_{se['id']}",
+                "title": sl.get("title", "Kelas Pelatihan"),
+                "date": se.get("date"),
+                "type": "class",
+                "description": se.get("topic") or f"Pertemuan {se.get('no')}",
+                "tutor": tutor_name,
+                "subject": sl.get("subject"),
+                "start_time": se.get("start_time"),
+                "end_time": se.get("end_time"),
+            })
+    items.sort(key=lambda x: x.get("date") or "")
     return items
 
 

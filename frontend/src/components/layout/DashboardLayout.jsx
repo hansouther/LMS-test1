@@ -3,11 +3,12 @@ import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Newspaper, CalendarDays, BookOpen, CalendarClock, FileText,
   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
-  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog,
+  Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck,
 } from "lucide-react";
 import { useAuth, roleLabel } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const NAV = {
   admin: [
@@ -40,6 +41,7 @@ const NAV = {
     { to: "/proctor", label: "Ringkasan", icon: LayoutDashboard, end: true },
     { to: "/proctor/monitoring", label: "Live Monitoring", icon: MonitorPlay },
     { to: "/proctor/trainings", label: "Kegiatan Pelatihan", icon: Library },
+    { to: "/proctor/attendance", label: "Rekap Kehadiran", icon: ClipboardCheck },
     { to: "/proctor/analytics", label: "Analitik Performa", icon: BarChart3 },
     { to: "/proctor/reports", label: "Laporan Nilai", icon: Download },
   ],
@@ -82,6 +84,46 @@ function Brand() {
         <p className="text-[10px] uppercase tracking-widest text-[#94A3B8]">Learning System</p>
       </div>
     </div>
+  );
+}
+
+function StudentBell() {
+  const [items, setItems] = useState([]);
+  const [unread, setUnread] = useState(0);
+
+  const load = () => api.get("/student/notifications").then((r) => { setItems(r.data.items || []); setUnread(r.data.unread || 0); }).catch(() => {});
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const onOpen = (o) => {
+    if (o && unread > 0) api.post("/student/notifications/read").then(() => setUnread(0)).catch(() => {});
+  };
+
+  return (
+    <Popover onOpenChange={onOpen}>
+      <PopoverTrigger asChild>
+        <button className="relative p-2 rounded-lg hover:bg-[#EEF2FF] text-[#475569] transition-colors duration-200" data-testid="student-bell" title="Notifikasi">
+          <Bell className="h-5 w-5" />
+          {unread > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid="student-bell-badge">{unread > 99 ? "99+" : unread}</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0" data-testid="student-notifications">
+        <div className="p-3 border-b border-[#E2E8F0]"><p className="font-semibold text-sm text-[#0A1128]">Notifikasi</p></div>
+        <div className="max-h-80 overflow-y-auto">
+          {items.length === 0 ? (
+            <p className="text-sm text-[#94A3B8] text-center py-8">Belum ada notifikasi</p>
+          ) : items.map((n) => (
+            <div key={n.id} className={`p-3 border-b border-[#F1F5F9] ${!n.read ? "bg-[#F4F7FE]" : ""}`} data-testid={`notif-${n.id}`}>
+              <p className="text-sm font-medium text-[#0A1128]">{n.title}</p>
+              {n.body && <p className="text-xs text-[#475569] mt-0.5">{n.body}</p>}
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -180,6 +222,7 @@ export default function DashboardLayout() {
 
           <div className="flex items-center gap-3">
             {user?.role === "admin" && <AdminBell />}
+            {user?.role === "student" && <StudentBell />}
             <Link to="/profile" className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#EEF2FF] transition-colors duration-200" data-testid="header-profile-link">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-[#0A1128] leading-tight">{user?.name}</p>

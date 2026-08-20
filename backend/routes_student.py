@@ -33,6 +33,19 @@ async def _enrolled_course_ids(student_id: str):
     return [r["course_id"] for r in rows]
 
 
+@router.get("/notifications")
+async def notifications_list(user: dict = Depends(student_only)):
+    items = await db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    unread = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    return {"items": items, "unread": unread}
+
+
+@router.post("/notifications/read")
+async def notifications_read(user: dict = Depends(student_only)):
+    await db.notifications.update_many({"user_id": user["id"], "read": False}, {"$set": {"read": True}})
+    return {"ok": True}
+
+
 async def _course_bundle(student_id: str, course_id: str):
     course = await db.courses.find_one({"id": course_id}, {"_id": 0})
     if not course:
