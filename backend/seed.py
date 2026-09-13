@@ -37,7 +37,7 @@ def _questions(tryout_id: str):
 
 async def seed(admin_email: str, admin_password: str):
     # Always ensure admin credentials are in sync
-    existing_admin = await db.users.find_one({"email": admin_email})
+    existing_admin = await db.users.find_one({"id": "admin_root"})
     if not existing_admin:
         await db.users.insert_one({
             "id": "admin_root", "email": admin_email, "password_hash": hash_password(admin_password),

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth, roleLabel } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { SheetTitle, SheetDescription } from "@/components/ui/sheet"; 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -201,6 +202,10 @@ export default function DashboardLayout() {
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-72 flex flex-col">
+                {/* Dua baris wajib untuk membersihkan peringatan konsol */}
+                  <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+                  <SheetDescription className="sr-only">Tautan cepat menu utama LMS</SheetDescription>
+                {/* Konten asli tautan menu sidebar Anda tetap di bawah sini... */}
                 <Brand />
                 <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} />
                 <div className="p-3 border-t border-[#E2E8F0] space-y-1">

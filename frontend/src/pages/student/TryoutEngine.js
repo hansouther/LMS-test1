@@ -35,8 +35,12 @@ export default function TryoutEngine() {
     if (submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
-    try {
+   try {
       await api.post(`/student/attempts/${attemptId}/submit`, { answers });
+      
+      // Bersihkan penyimpanan lokal setelah berhasil dikirim
+      localStorage.removeItem(`tryout_${attemptId}_answers`);
+      
       toast.success("Jawaban berhasil dikumpulkan!");
       navigate(`/student/results/${attemptId}`, { replace: true });
     } catch (e) {
@@ -53,7 +57,10 @@ export default function TryoutEngine() {
         const { data: att } = await api.post(`/student/tryouts/${id}/start`);
         setTryout(t);
         setAttemptId(att.id);
-        setAnswers(att.answers || {});
+        // Cek riwayat jawaban di peramban siswa
+        const localAnswers = JSON.parse(localStorage.getItem(`tryout_${att.id}_answers`));
+        setAnswers(localAnswers || att.answers || {});
+        
         setTimeLeft((t.duration_minutes || 60) * 60);
       } catch (e) {
         toast.error(apiError(e));
@@ -73,7 +80,17 @@ export default function TryoutEngine() {
 
   const q = tryout.questions[idx];
   const val = answers[q.id] || [];
-  const setVal = (v) => setAnswers((a) => ({ ...a, [q.id]: v }));
+  //const setVal = (v) => setAnswers((a) => ({ ...a, [q.id]: v }));
+  const setVal = (v) => {
+    setAnswers((prev) => {
+      const updatedAnswers = { ...prev, [q.id]: v };
+      // Simpan jawaban baru langsung ke memori peramban
+      if (attemptId) {
+        localStorage.setItem(`tryout_${attemptId}_answers`, JSON.stringify(updatedAnswers));
+      }
+      return updatedAnswers;
+    });
+  };
   const answeredCount = tryout.questions.filter((qq) => (answers[qq.id] || []).length > 0).length;
 
   const toggleMulti = (optId) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, PlayCircle, FileText, Trophy, Award, ClipboardList, Eye, Youtube, CheckCircle2, Circle, Medal, Lock, RotateCcw } from "lucide-react";
-import useFetch from "@/hooks/useFetch";
+//import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
 import { fileUrl, youtubeEmbed } from "@/lib/media";
 import { Loading, Empty } from "@/components/common/States";
@@ -11,20 +11,81 @@ import { toast } from "sonner";
 export default function CourseLearn() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data, loading, refetch } = useFetch(`/student/courses/${id}/learn`);
+  //const { data, loading, refetch } = useFetch(`/student/courses/${id}/learn`);
+  //const [active, setActive] = useState(null);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    if (data?.lessons?.length && !active) setActive(data.lessons[0]);
-  }, [data]); // eslint-disable-line
+    const loadCourse = async () => {
+      const cacheKey = `lms_course_${id}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      
+      // 1. Jika ada di memori browser, gunakan tanpa menembak backend
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setData(parsed);
+        if (parsed.lessons?.length) setActive(parsed.lessons[0]);
+        setLoading(false);
+        return;
+      }
 
+    // 2. Jika tidak ada, baru ambil dari backend
+      try {
+        const res = await api.get(`/student/courses/${id}/learn`);
+        setData(res.data);
+        sessionStorage.setItem(cacheKey, JSON.stringify(res.data)); // Simpan ke memori
+        if (res.data.lessons?.length) setActive(res.data.lessons[0]);
+      } catch (e) {
+        toast.error(apiError(e));
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCourse();
+  }, [id]);  
+  //useEffect(() => {
+  //  if (data?.lessons?.length && !active) setActive(data.lessons[0]);
+  //}, [data]); // eslint-disable-line
+
+  // const markComplete = async (lesson) => {
+  //   try {
+  //     await api.post(`/student/lessons/${lesson.id}/complete`, { completed: !lesson.completed });
+  //     setActive((a) => (a && a.id === lesson.id ? { ...a, completed: !lesson.completed } : a));
+  //     if (!lesson.completed) toast.success("Pelajaran ditandai selesai 🎉".replace(" 🎉", ""));
+  //     refetch();
+  //   } catch (e) { toast.error(apiError(e)); }
+  // };
   const markComplete = async (lesson) => {
+    if (processingId) return; // Blokir jika sedang loading
+    setProcessingId(lesson.id);
+    
+    const isCompleted = !lesson.completed;
+    
     try {
-      await api.post(`/student/lessons/${lesson.id}/complete`, { completed: !lesson.completed });
-      setActive((a) => (a && a.id === lesson.id ? { ...a, completed: !lesson.completed } : a));
-      if (!lesson.completed) toast.success("Pelajaran ditandai selesai 🎉".replace(" 🎉", ""));
-      refetch();
-    } catch (e) { toast.error(apiError(e)); }
+      await api.post(`/student/lessons/${lesson.id}/complete`, { completed: isCompleted });
+      
+      // Update UI langsung tanpa memanggil backend lagi
+      setActive((a) => (a && a.id === lesson.id ? { ...a, completed: isCompleted } : a));
+      
+      setData((prev) => {
+        const newData = { ...prev };
+        const lessonIndex = newData.lessons.findIndex(l => l.id === lesson.id);
+        if (lessonIndex > -1) newData.lessons[lessonIndex].completed = isCompleted;
+        
+        // Perbarui cache agar saat halaman direfresh, status selesai tidak hilang
+        sessionStorage.setItem(`lms_course_${id}`, JSON.stringify(newData));
+        return newData;
+      });
+
+      if (isCompleted) toast.success("Pelajaran ditandai selesai");
+    } catch (e) { 
+      toast.error(apiError(e)); 
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   if (loading) return <Loading />;
@@ -81,9 +142,14 @@ export default function CourseLearn() {
                     <p className="mt-1 text-sm text-[#475569]">{active.description}</p>
                   </div>
                   <Button size="sm" onClick={() => markComplete(active)} data-testid={`complete-${active.id}`}
+                    disabled={processingId === active.id}
+                    className={active.completed ? "shrink-0 rounded-full bg-[#10B981] hover:bg-[#0ea371]" : "shrink-0 rounded-full bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"}>
+                    {processingId === active.id ? "Memproses..." : active.completed ? <><CheckCircle2 className="h-4 w-4" /> Selesai</> : <><Circle className="h-4 w-4" /> Tandai Selesai</>}
+                  </Button>
+                  {/* <Button size="sm" onClick={() => markComplete(active)} data-testid={`complete-${active.id}`}
                     className={active.completed ? "shrink-0 rounded-full bg-[#10B981] hover:bg-[#0ea371]" : "shrink-0 rounded-full bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"}>
                     {active.completed ? <><CheckCircle2 className="h-4 w-4" /> Selesai</> : <><Circle className="h-4 w-4" /> Tandai Selesai</>}
-                  </Button>
+                  </Button> */}
                 </div>
                 {active.attachments?.length > 0 && (
                   <div className="mt-4">
