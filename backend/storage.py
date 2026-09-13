@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Tentukan direktori penyimpanan lokal di dalam folder backend
+# Buat folder 'uploads' di dalam direktori backend secara otomatis
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -18,25 +18,24 @@ MIME_TYPES = {
 }
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    """Menyimpan berkas secara lokal di peladen backend."""
+    """Fungsi mandiri untuk menyimpan file ke folder lokal peladen."""
     try:
         safe_path = os.path.normpath(path).lstrip("/\\")
         full_path = os.path.join(UPLOAD_DIR, safe_path)
         
-        # Buat direktori turunan jika path berisi folder (misal: avatar/user1.png)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
         with open(full_path, "wb") as f:
             f.write(data)
             
-        logger.info(f"File berhasil disimpan secara lokal: {safe_path}")
+        logger.info(f"File disimpan lokal: {safe_path}")
         return {"status": "success", "path": safe_path, "url": f"/uploads/{safe_path}"}
     except Exception as e:
-        logger.error(f"Gagal menyimpan file secara lokal: {e}")
+        logger.error(f"Gagal menyimpan file: {e}")
         raise e
 
 def get_object(path: str):
-    """Mengambil berkas dari penyimpanan lokal peladen."""
+    """Fungsi mandiri untuk membaca file dari folder lokal."""
     try:
         safe_path = os.path.normpath(path).lstrip("/\\")
         full_path = os.path.join(UPLOAD_DIR, safe_path)

@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LMS RBAC Platform")
 
+
+import os
+upload_folder = os.path.join(ROOT_DIR, "uploads")
+os.makedirs(upload_folder, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_folder), name="uploads")
+
 app.include_router(routes_auth.router)
 app.include_router(routes_public.router)
 app.include_router(routes_admin.router)
