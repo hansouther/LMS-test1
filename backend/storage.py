@@ -1,13 +1,11 @@
 import os
 import logging
-import requests
 
 logger = logging.getLogger(__name__)
 
-STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
-STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
-APP_NAME = "cendekialms"
+# Tentukan direktori penyimpanan lokal di dalam folder backend
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
@@ -19,42 +17,40 @@ MIME_TYPES = {
     "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime", "m4v": "video/x-m4v",
 }
 
-_storage_key = None
-
-
-def init_storage(force: bool = False):
-    global _storage_key
-    if _storage_key and not force:
-        return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
-
-
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=180,
-    )
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=180,
-        )
-    resp.raise_for_status()
-    return resp.json()
-
+    """Menyimpan berkas secara lokal di peladen backend."""
+    try:
+        safe_path = os.path.normpath(path).lstrip("/\\")
+        full_path = os.path.join(UPLOAD_DIR, safe_path)
+        
+        # Buat direktori turunan jika path berisi folder (misal: avatar/user1.png)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        with open(full_path, "wb") as f:
+            f.write(data)
+            
+        logger.info(f"File berhasil disimpan secara lokal: {safe_path}")
+        return {"status": "success", "path": safe_path, "url": f"/uploads/{safe_path}"}
+    except Exception as e:
+        logger.error(f"Gagal menyimpan file secara lokal: {e}")
+        raise e
 
 def get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=120)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=120)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    """Mengambil berkas dari penyimpanan lokal peladen."""
+    try:
+        safe_path = os.path.normpath(path).lstrip("/\\")
+        full_path = os.path.join(UPLOAD_DIR, safe_path)
+        
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"Berkas tidak ditemukan: {path}")
+            
+        with open(full_path, "rb") as f:
+            data = f.read()
+            
+        ext = path.split(".")[-1].lower() if "." in path else ""
+        content_type = MIME_TYPES.get(ext, "application/octet-stream")
+        
+        return data, content_type
+    except Exception as e:
+        logger.error(f"Gagal mengambil file: {e}")
+        raise e

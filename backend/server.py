@@ -7,12 +7,14 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from database import db, client
 from seed import seed, seed_content, migrate_analysis
-from storage import init_storage
+#from storage import init_storage
 import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ app.include_router(routes_tutor.router)
 app.include_router(routes_proctor.router)
 app.include_router(routes_files.router)
 app.include_router(routes_classes.router)
-
+app.mount("/uploads", StaticFiles(directory=os.path.join(ROOT_DIR, "uploads")), name="uploads")
 
 @app.get("/api/")
 async def root():
@@ -68,11 +70,11 @@ async def startup():
             "id": f"{sl['id']}__s1", "no": 1, "date": sl.get("date"),
             "start_time": sl.get("start_time"), "end_time": sl.get("end_time"), "topic": sl.get("notes"),
         }]}})
-    try:
-        init_storage()
-        logger.info("Object storage initialized.")
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+    #try:
+    #    init_storage()
+    #    logger.info("Object storage initialized.")
+    #except Exception as e:
+    #    logger.error(f"Storage init failed: {e}")
     logger.info("Startup complete: indexes ensured and seed executed.")
 
 
