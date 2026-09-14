@@ -2,16 +2,22 @@ import os
 import re
 import ipaddress
 import logging
-import httpx
+import smtplib
+import asyncio
+from email.message import EmailMessage
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"  # constant, never from env
-EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
+# Konfigurasi SMTP Mandiri
+SMTP_HOST = os.environ.get("SMTP_HOST")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Binara LMS")
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS", SMTP_USER)
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 
@@ -21,7 +27,6 @@ _CRED_ASK = ("reply with your password", "reply with the code", "send your passw
              "your full card number", "seed phrase", "recovery phrase", "verify your card",
              "social security number", "confirm your bank details")
 _HOSTISH = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})", re.I)
-
 
 def _host_ok(host: str) -> bool:
     if not host or "xn--" in host:
@@ -33,10 +38,8 @@ def _host_ok(host: str) -> bool:
         pass
     return not any(host == s or host.endswith("." + s) for s in _SHORTENERS)
 
-
 def _same_site(shown: str, real: str) -> bool:
     return shown == real or real.endswith("." + shown) or shown.endswith("." + real)
-
 
 class _EmailScan(HTMLParser):
     def __init__(self):
@@ -59,7 +62,6 @@ class _EmailScan(HTMLParser):
         if tag.lower() == "a" and self._href is not None:
             self.anchors.append((self._href, "".join(self._text)))
             self._href, self._text = None, []
-
 
 def _assert_safe_email(subject: str, html: str) -> None:
     scan = _EmailScan(); scan.feed(html)
@@ -86,24 +88,43 @@ def _assert_safe_email(subject: str, html: str) -> None:
             if not _same_site(m.group(1).lower(), real):
                 raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
 
+def _send_smtp_sync(to: str, subject: str, html: str):
+    if not SMTP_USER or not SMTP_PASSWORD or not SMTP_HOST:
+        logger.error("Kredensial SMTP tidak lengkap. Pengiriman email dilewati.")
+        return None
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>"
+    msg['To'] = to
+    if EMAIL_REPLY_TO:
+        msg['Reply-To'] = EMAIL_REPLY_TO
+
+    msg.set_content("Harap gunakan klien surel yang mendukung HTML.")
+    msg.add_alternative(html, subtype='html')
+
+    try:
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        return "sent"
+    except Exception as e:
+        logger.error(f"Gagal mengirim email via SMTP: {e}")
+        raise e
 
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
     _assert_safe_email(subject, html)
-    if not EMAIL_KEY:
-        logger.error("EMERGENT_EMAIL_KEY missing; skipping email send")
+    try:
+        result = await asyncio.to_thread(_send_smtp_sync, to, subject, html)
+        return result
+    except Exception:
         return None
-    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
-    if EMAIL_REPLY_TO:
-        payload["contact_email"] = EMAIL_REPLY_TO
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{EMAIL_BASE_URL}/api/v1/email/send",
-            headers={"X-Email-Key": EMAIL_KEY},
-            json=payload,
-        )
-    resp.raise_for_status()
-    return resp.json().get("id")
-
 
 async def notify_safe(to: str, subject: str, html: str) -> bool:
     try:
@@ -112,7 +133,6 @@ async def notify_safe(to: str, subject: str, html: str) -> bool:
     except Exception as e:
         logger.error(f"Email send error to {to}: {e}")
         return False
-
 
 def _shell(inner: str) -> str:
     cta = (f'<p style="margin:24px 0"><a href="{APP_BASE_URL}/login" '
@@ -132,7 +152,6 @@ def _shell(inner: str) -> str:
         '</td></tr></table></td></tr></table>'
     )
 
-
 async def notify_bid_accepted(to: str, tutor_name: str, slot_title: str, date: str, time_range: str):
     subject = f"Selamat! Bidding mengajar Anda diterima — {slot_title}"
     inner = (
@@ -143,7 +162,6 @@ async def notify_bid_accepted(to: str, tutor_name: str, slot_title: str, date: s
         f'<p>Kelas ini kini muncul di Kalender Mengajar dan Manajemen Kelas Anda.</p>'
     )
     return await notify_safe(to, subject, _shell(inner))
-
 
 async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: str):
     subject = f"Try Out baru tersedia: {tryout_title}"
@@ -156,7 +174,6 @@ async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: s
             f'<p>Masuk ke portal siswa lalu buka menu CBT / Try Out untuk mulai mengerjakan.</p>'
         )
         await notify_safe(r["email"], subject, _shell(inner))
-
 
 async def notify_new_material(recipients: list, class_title: str, item_label: str):
     subject = f"Pembaruan kelas: {class_title}"
