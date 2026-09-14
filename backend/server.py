@@ -12,16 +12,29 @@ from starlette.middleware.cors import CORSMiddleware
 
 from database import db, client
 from seed import seed, seed_content, migrate_analysis
-#from storage import init_storage
 import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LMS RBAC Platform")
 
-import os
+# Konfigurasi CORS ditempatkan di sini agar aktif sebelum rute dan middleware lain diproses
+default_origins = [
+    "http://localhost:3000",
+    "https://lms-binara-production.up.railway.app",
+]
+env_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+allowed_origins = env_origins if env_origins else default_origins
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 upload_folder = os.path.join(ROOT_DIR, "uploads")
 os.makedirs(upload_folder, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_folder), name="uploads")
@@ -34,22 +47,10 @@ app.include_router(routes_tutor.router)
 app.include_router(routes_proctor.router)
 app.include_router(routes_files.router)
 app.include_router(routes_classes.router)
-app.mount("/uploads", StaticFiles(directory=os.path.join(ROOT_DIR, "uploads")), name="uploads")
 
 @app.get("/api/")
 async def root():
     return {"message": "LMS RBAC API aktif"}
-
-
-origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins or ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 @app.on_event("startup")
 async def startup():
@@ -65,22 +66,15 @@ async def startup():
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
     await seed_content()
     await migrate_analysis()
-    # Backward-compat: existing accounts (pre-verification feature) are treated as approved
     await db.users.update_many({"status": {"$exists": False}}, {"$set": {"status": "approved"}})
-    # Backfill sessions for legacy single-date classes
+    
     legacy = await db.teaching_slots.find({"sessions": {"$exists": False}, "date": {"$exists": True}}, {"_id": 0}).to_list(500)
     for sl in legacy:
         await db.teaching_slots.update_one({"id": sl["id"]}, {"$set": {"sessions": [{
             "id": f"{sl['id']}__s1", "no": 1, "date": sl.get("date"),
             "start_time": sl.get("start_time"), "end_time": sl.get("end_time"), "topic": sl.get("notes"),
         }]}})
-    #try:
-    #    init_storage()
-    #    logger.info("Object storage initialized.")
-    #except Exception as e:
-    #    logger.error(f"Storage init failed: {e}")
     logger.info("Startup complete: indexes ensured and seed executed.")
-
 
 @app.on_event("shutdown")
 async def shutdown():
