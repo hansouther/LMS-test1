@@ -4,6 +4,7 @@ import ipaddress
 import logging
 import smtplib
 import asyncio
+import httpx
 from email.message import EmailMessage
 from html import escape
 from html.parser import HTMLParser
@@ -11,13 +12,14 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
-# Konfigurasi SMTP Mandiri
+# Konfigurasi Kredensial API & SMTP
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 SMTP_HOST = os.environ.get("SMTP_HOST")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Binara LMS")
-EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS", SMTP_USER)
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS", SMTP_USER or "no-reply@binaralms.com")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 
@@ -88,10 +90,35 @@ def _assert_safe_email(subject: str, html: str) -> None:
             if not _same_site(m.group(1).lower(), real):
                 raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
 
+async def _send_via_api(to: str, subject: str, html: str) -> bool:
+    if not BREVO_API_KEY:
+        return False
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM_ADDRESS},
+        "to": [{"email": to}],
+        "subject": subject,
+        "htmlContent": html
+    }
+    if EMAIL_REPLY_TO:
+        payload["replyTo"] = {"email": EMAIL_REPLY_TO}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(url, json=payload, headers=headers)
+            return res.status_code in (200, 201, 202)
+    except Exception as e:
+        logger.warning(f"Gagal via Brevo API, mencoba fallback SMTP: {e}")
+        return False
+
 def _send_smtp_sync(to: str, subject: str, html: str):
     if not SMTP_USER or not SMTP_PASSWORD or not SMTP_HOST:
-        logger.error("Kredensial SMTP tidak lengkap. Pengiriman email dilewati.")
-        return None
+        raise ValueError("Kredensial SMTP tidak lengkap.")
 
     msg = EmailMessage()
     msg['Subject'] = subject
@@ -103,29 +130,30 @@ def _send_smtp_sync(to: str, subject: str, html: str):
     msg.set_content("Harap gunakan klien surel yang mendukung HTML.")
     msg.add_alternative(html, subtype='html')
 
-    try:
-        # Ditambahkan parameter timeout=15 detik agar koneksi tidak menggantung selamanya (Errno 110)
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        return "sent"
-    except Exception as e:
-        logger.error(f"Gagal mengirim email via SMTP ke {to}: {e}")
-        raise e
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    return "sent"
 
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
     _assert_safe_email(subject, html)
+    
+    # Prioritas 1: Menggunakan Brevo HTTP API (Port 443)
+    if await _send_via_api(to, subject, html):
+        return "sent"
+
+    # Prioritas 2: Fallback menggunakan SMTP jika API gagal/tidak disetel
     try:
         result = await asyncio.to_thread(_send_smtp_sync, to, subject, html)
         return result
     except Exception as e:
-        logger.error(f"Async email dispatch error: {e}")
+        logger.error(f"Gagal total pengiriman email ke {to} (API & SMTP): {e}")
         return None
 
 async def notify_safe(to: str, subject: str, html: str) -> bool:
