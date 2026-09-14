@@ -104,18 +104,19 @@ def _send_smtp_sync(to: str, subject: str, html: str):
     msg.add_alternative(html, subtype='html')
 
     try:
+        # Ditambahkan parameter timeout=15 detik agar koneksi tidak menggantung selamanya (Errno 110)
         if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
         return "sent"
     except Exception as e:
-        logger.error(f"Gagal mengirim email via SMTP: {e}")
+        logger.error(f"Gagal mengirim email via SMTP ke {to}: {e}")
         raise e
 
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
@@ -123,13 +124,14 @@ async def send_email(*, to: str, subject: str, html: str) -> str | None:
     try:
         result = await asyncio.to_thread(_send_smtp_sync, to, subject, html)
         return result
-    except Exception:
+    except Exception as e:
+        logger.error(f"Async email dispatch error: {e}")
         return None
 
 async def notify_safe(to: str, subject: str, html: str) -> bool:
     try:
-        await send_email(to=to, subject=subject, html=html)
-        return True
+        res = await send_email(to=to, subject=subject, html=html)
+        return res == "sent"
     except Exception as e:
         logger.error(f"Email send error to {to}: {e}")
         return False
@@ -166,6 +168,8 @@ async def notify_bid_accepted(to: str, tutor_name: str, slot_title: str, date: s
 async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: str):
     subject = f"Try Out baru tersedia: {tryout_title}"
     for r in recipients:
+        if not r.get("email"):
+            continue
         inner = (
             f'<p>Halo {escape(r.get("name") or "Siswa")},</p>'
             f'<p>Sebuah Try Out baru telah dirilis dan siap Anda kerjakan:</p>'
@@ -178,6 +182,8 @@ async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: s
 async def notify_new_material(recipients: list, class_title: str, item_label: str):
     subject = f"Pembaruan kelas: {class_title}"
     for r in recipients:
+        if not r.get("email"):
+            continue
         inner = (
             f'<p>Halo {escape(r.get("name") or "Siswa")},</p>'
             f'<p>Ada pembaruan pada kelas <strong>{escape(class_title)}</strong>:</p>'
