@@ -1,7 +1,8 @@
 import os
 import uuid
 import asyncio
-import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr
@@ -17,7 +18,7 @@ import jwt
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 MAX_ATTEMPTS = 5
 LOCK_MINUTES = 15
 
@@ -53,7 +54,7 @@ class LoginBody(BaseModel):
 
 
 class GoogleBody(BaseModel):
-    session_id: str
+    token: str
 
 
 def _public_user(user: dict) -> dict:
@@ -206,36 +207,48 @@ async def login(body: LoginBody, request: Request, response: Response):
 
 @router.post("/google/session")
 async def google_session(body: GoogleBody, response: Response):
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Konfigurasi Google Client ID tidak ditemukan")
+        
     try:
-        r = requests.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": body.session_id}, timeout=10)
-    except Exception:
-        raise HTTPException(status_code=502, detail="Gagal menghubungi layanan autentikasi")
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Sesi Google tidak valid")
-    data = r.json()
-    email = data["email"].lower()
+        # Memverifikasi token langsung ke server Google secara mandiri
+        idinfo = id_token.verify_oauth2_token(
+            body.token, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Token Google tidak valid atau kedaluwarsa")
+        
+    # Mengambil data dari payload Google
+    email = idinfo["email"].lower()
+    name = idinfo.get("name")
+    picture = idinfo.get("picture")
+    
+    # Logika database LMS Anda tetap sama
     user = await db.users.find_one({"email": email})
     if not user:
         user = {
             "id": new_id(),
             "email": email,
             "password_hash": None,
-            "name": data.get("name") or email.split("@")[0],
+            "name": name or email.split("@")[0],
             "role": "student",
             "status": "pending",
             "phone": None,
             "school_id": None,
             "grade": None,
             "goal": None,
-            "picture": data.get("picture"),
+            "picture": picture,
             "auth_provider": "google",
             "created_at": now_iso(),
         }
         await db.users.insert_one(user)
     else:
-        if data.get("picture") and not user.get("picture"):
-            await db.users.update_one({"id": user["id"]}, {"$set": {"picture": data["picture"]}})
-            user["picture"] = data["picture"]
+        if picture and not user.get("picture"):
+            await db.users.update_one({"id": user["id"]}, {"$set": {"picture": picture}})
+            user["picture"] = picture
+            
     await _issue_session(user, response)
     return _public_user({k: v for k, v in user.items() if k != "_id"})
 
