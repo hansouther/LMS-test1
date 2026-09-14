@@ -23,6 +23,8 @@ app = FastAPI(title="LMS RBAC Platform")
 default_origins = [
     "http://localhost:3000",
     "https://lms-binara-production.up.railway.app",
+    "https://binaralms.com",
+    "https://www.binaralms.com",
 ]
 env_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 allowed_origins = env_origins if env_origins else default_origins

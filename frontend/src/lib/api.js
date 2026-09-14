@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// Membersihkan URL secara otomatis agar tidak terjadi penumpukan /api/api
+const rawUrl = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL || "https://lms-binara-production.up.railway.app";
+const cleanBaseUrl = rawUrl.replace(/\/api\/?$/, "");
+
 const api = axios.create({
-  baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
+  baseURL: `${cleanBaseUrl}/api`,
   withCredentials: true,
 });
 
