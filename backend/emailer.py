@@ -165,9 +165,6 @@ async def notify_safe(to: str, subject: str, html: str) -> bool:
         return False
 
 def _shell(inner: str) -> str:
-    cta = (f'<p style="margin:24px 0"><a href="{APP_BASE_URL}/login" '
-           f'style="background:#0E7490;color:#ffffff;text-decoration:none;padding:12px 22px;'
-           f'border-radius:999px;font-weight:600">Buka Binara LMS</a></p>') if APP_BASE_URL else ""
     return (
         '<table role="presentation" width="100%" style="background:#F4F7FE;padding:24px">'
         '<tr><td align="center"><table role="presentation" width="560" '
@@ -175,21 +172,23 @@ def _shell(inner: str) -> str:
         'font-family:Arial,Helvetica,sans-serif;color:#0A1128">'
         '<tr><td style="padding:28px 32px">'
         f'<p style="font-size:18px;font-weight:700;color:#0E7490;margin:0 0 16px">Binara LMS</p>'
-        f'{inner}{cta}'
+        f'{inner}'
         '<p style="font-size:12px;color:#94A3B8;margin-top:24px">'
-        'Email ini dikirim otomatis oleh Binara LMS sebagai notifikasi layanan. '
-        'Kami tidak pernah meminta kata sandi atau data kartu melalui email.</p>'
+        'Email ini dikirim secara otomatis jadi jangan dilakukan pengiriman jawaban ke email ini. '
+        'Namun jika butuh bantuan bisa menghubungi admin melalui WhatsApp di '
+        '<a href="https://wa.me/628159896773" style="color:#0E7490;text-decoration:none;font-weight:600">+62 815-9896-773</a>.</p>'
         '</td></tr></table></td></tr></table>'
     )
 
 async def notify_bid_accepted(to: str, tutor_name: str, slot_title: str, date: str, time_range: str):
-    subject = f"Selamat! Bidding mengajar Anda diterima — {slot_title}"
+    subject = f"Selamat! Pengajuan bidding Anda diterima — {slot_title}"
     inner = (
         f'<p>Halo {escape(tutor_name)},</p>'
-        f'<p>Kabar baik! Pengajuan bidding Anda untuk kelas '
-        f'<strong>{escape(slot_title)}</strong> telah <strong>diterima</strong> oleh admin.</p>'
+        f'<p>Pengajuan bidding Anda untuk kelas <strong>{escape(slot_title)}</strong> telah diterima oleh admin.</p>'
         f'<p>Jadwal: <strong>{escape(date)}</strong>, pukul {escape(time_range)}.</p>'
-        f'<p>Kelas ini kini muncul di Kalender Mengajar dan Manajemen Kelas Anda.</p>'
+        f'<p>Sekarang Anda bisa melihat kelas Anda dan pertemuannya dengan langsung mengklik bagian manajemen kelas melalui tautan berikut: '
+        f'<a href="https://binaralms.com/tutor/classes" style="color:#0E7490;text-decoration:none;font-weight:600">Manajemen Kelas</a>.</p>'
+        f'<p>Jangan lupa kirimkan materi setelah mengajar serta di-absen ya siswanya, semuanya ada di manajemen kelas tersebut. Terima kasih.</p>'
     )
     return await notify_safe(to, subject, _shell(inner))
 
@@ -208,7 +207,7 @@ async def notify_new_tryout(recipients: list, tryout_title: str, subject_name: s
         await notify_safe(r["email"], subject, _shell(inner))
 
 async def notify_new_material(recipients: list, class_title: str, item_label: str):
-    subject = f"Pembaruan kelas: {class_title}"
+    subject = f"Pembaruan kelas: class_title"
     for r in recipients:
         if not r.get("email"):
             continue
