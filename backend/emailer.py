@@ -19,7 +19,7 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Binara LMS")
-EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS", SMTP_USER or "no-reply@binaralms.com")
+EMAIL_FROM_ADDRESS = os.environ.get("EMAIL_FROM_ADDRESS", "admin@binaralms.com")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 APP_BASE_URL = (os.environ.get("APP_BASE_URL") or "").rstrip("/")
 
