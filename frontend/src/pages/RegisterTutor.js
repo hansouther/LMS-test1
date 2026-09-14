@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, ArrowRight, Loader2, BadgeCheck } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import api, { apiError } from "@/lib/api";
 import { useAuth, roleHome } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,33 @@ export default function RegisterTutor() {
     } catch (err) { toast.error(apiError(err)); } finally { setLoading(false); }
   };
 
-  const googleRegister = () => {
-    localStorage.setItem("intended_role", "tutor");
-    const redirectUrl = window.location.origin + "/register/tentor";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      // Kita kirim token dan juga catatan bahwa ini pendaftaran untuk tutor
+      const { data } = await api.post("/auth/google/session", { 
+        token: credentialResponse.credential,
+        intended_role: "tutor" 
+      });
+      setUser(data);
+      
+      // Jika user baru login Google, role asalnya adalah student.
+      // Kita arahkan mereka ke halaman onboarding jika perlu, 
+      // atau biarkan mereka menekan tombol "Daftar Jadi Tentor" di profil mereka nanti.
+      toast.success("Berhasil masuk dengan Google! Silakan lengkapi profil Anda.");
+      
+      if (data.role === "tutor" && data.status !== "approved" && !data.cv_url) {
+        navigate("/onboarding/tutor", { replace: true });
+      } else if (data.status !== "approved" && data.role !== "admin") {
+        navigate("/pending", { replace: true });
+      } else {
+        navigate(roleHome(data.role), { replace: true });
+      }
+    } catch (err) {
+      toast.error(apiError(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,16 +73,24 @@ export default function RegisterTutor() {
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 mb-8 justify-center">
           <div className="h-10 w-10 rounded-xl bg-[#C9A227] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
-          <span className="font-head font-bold text-xl text-[#0A1128]">Binara LMS</span>
+          <span className="font-head font-bold text-xl text-[#0A1128]">SKENA PENDIDIKAN BERPRESTASI</span>
         </Link>
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FBF3DC] text-[#C9A227] px-3 py-1 text-xs font-semibold"><BadgeCheck className="h-3.5 w-3.5" /> Portal Tentor / Pengajar</span>
           <h1 className="mt-3 text-2xl font-bold text-[#0A1128]">Daftar sebagai Tentor</h1>
-          <p className="mt-2 text-sm text-[#475569]">Bergabung mengajar di Binara LMS. Akun aktif setelah CV & sertifikat diverifikasi admin. Sudah punya akun? <Link to="/login" className="text-[#0E7490] font-semibold hover:underline">Masuk</Link></p>
+          <p className="mt-2 text-sm text-[#475569]">Bergabung mengajar di Skena LMS. Akun aktif setelah CV & sertifikat diverifikasi admin. Sudah punya akun? <Link to="/login" className="text-[#0E7490] font-semibold hover:underline">Masuk</Link></p>
 
-          <Button variant="outline" onClick={googleRegister} className="w-full h-11 rounded-full border-[#CBD5E1] hover:bg-white mt-6" data-testid="tutor-google-btn">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-4 w-4" /> Daftar dengan Google
-          </Button>
+          <div className="flex justify-center w-full mt-6 mb-2">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => toast.error("Gagal mendaftar dengan layanan Google")}
+              useOneTap
+              shape="pill"
+              theme="outline"
+              width="100%"
+            />
+          </div>
+          
           <div className="my-5 flex items-center gap-3 text-xs text-[#94A3B8]"><div className="flex-1 h-px bg-[#E2E8F0]" /> atau isi manual <div className="flex-1 h-px bg-[#E2E8F0]" /></div>
 
           <form onSubmit={submit} className="space-y-4" data-testid="register-tutor-form">

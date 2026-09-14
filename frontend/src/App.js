@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import AuthCallback from "@/components/AuthCallback";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 import Landing from "@/pages/Landing";
@@ -60,7 +59,6 @@ import PendingVerification from "@/pages/PendingVerification";
 
 function AppRoutes() {
   const location = useLocation();
-  if (location.hash?.includes("session_id=")) return <AuthCallback />;
 
   return (
     <Routes>

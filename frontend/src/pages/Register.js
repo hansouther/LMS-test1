@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, ArrowRight, Loader2 } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import api, { apiError } from "@/lib/api";
 import { useAuth, roleHome } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -43,12 +44,27 @@ export default function Register() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/google/session", { token: credentialResponse.credential });
+      setUser(data);
+      toast.success("Akun berhasil dibuat dengan Google!");
+      if (data.status && data.status !== "approved" && data.role !== "admin") navigate("/pending", { replace: true });
+      else navigate(roleHome(data.role), { replace: true });
+    } catch (err) {
+      toast.error(apiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#EFF6F8]">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 mb-8 justify-center">
           <div className="h-10 w-10 rounded-xl bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
-          <span className="font-head font-bold text-xl text-[#0A1128]">Binara LMS</span>
+          <span className="font-head font-bold text-xl text-[#0A1128]">SKENA PENDIDIKAN BERPRESTASI</span>
         </Link>
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8">
           <h1 className="text-2xl font-bold text-[#0A1128]">Daftar sebagai Siswa</h1>
@@ -94,6 +110,22 @@ export default function Register() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Buat Akun <ArrowRight className="h-4 w-4" /></>}
             </Button>
           </form>
+
+          <div className="my-6 flex items-center gap-3 text-xs text-[#94A3B8]">
+            <div className="flex-1 h-px bg-[#E2E8F0]" />ATAU<div className="flex-1 h-px bg-[#E2E8F0]" />
+          </div>
+
+          <div className="flex justify-center w-full mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => toast.error("Gagal mendaftar dengan Google")}
+              useOneTap
+              shape="pill"
+              theme="outline"
+              width="100%"
+            />
+          </div>
+
           <p className="mt-4 text-center text-sm text-[#475569]">Perwakilan sekolah? <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="link-register-proctor">Daftar sebagai Proktor</Link> · Pengajar? <Link to="/register/tentor" className="text-[#C9A227] font-semibold hover:underline" data-testid="link-register-tutor">Daftar sebagai Tentor</Link></p>
         </div>
       </div>

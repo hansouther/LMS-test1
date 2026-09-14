@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "@/index.css";
 import App from "@/App";
 
@@ -13,11 +14,16 @@ const queryClient = new QueryClient({
   },
 });
 
+
+const GOOGLE_CLIENT_ID = "261009463558-etnl0oihtrnuhb8sob3hrbmgbe0a4ves.apps.googleusercontent.com";
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <App />
+      </GoogleOAuthProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );
