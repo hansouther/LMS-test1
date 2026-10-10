@@ -1,0 +1,857 @@
+diff --git a/backend/routes_r2.py b/backend/routes_r2.py
+new file mode 100644
+index 0000000..0b0b8ae
+--- /dev/null
++++ b/backend/routes_r2.py
+@@ -0,0 +1,86 @@
++import os
++import uuid
++import asyncio
++from fastapi import APIRouter, HTTPException, Depends, Request
++from fastapi.responses import RedirectResponse
++
++from database import db
++from security import get_current_user, require_roles
++from storage import s3_client, S3_BUCKET_NAME, put_object, get_object
++import routes_files
++import routes_site
++
++# Berkas dibuka langsung dari Cloudflare R2 (link bertanda tangan), bukan dialirkan lewat server Railway.
++router = APIRouter(prefix="/api", tags=["r2"])
++PUBLIC_BASE_URL = (os.environ.get("S3_PUBLIC_URL") or os.environ.get("R2_PUBLIC_URL") or "").rstrip("/")
++FILE_TTL = 3600
++PUBLIC_TTL = 7 * 24 * 3600
++
++
++def _signed(path: str, ttl: int, content_type: str = "", filename: str = "") -> str:
++    params = {"Bucket": S3_BUCKET_NAME, "Key": path}
++    if content_type:
++        params["ResponseContentType"] = content_type
++    if filename:
++        safe = filename.replace('"', "").encode("ascii", "ignore").decode() or "berkas"
++        params["ResponseContentDisposition"] = f'inline; filename="{safe}"'
++    return s3_client.generate_presigned_url("get_object", Params=params, ExpiresIn=ttl)
++
++
++def _public(path: str, ttl: int) -> str:
++    return f"{PUBLIC_BASE_URL}/{path}" if PUBLIC_BASE_URL else _signed(path, ttl)
++
++
++@router.get("/files/{path:path}")
++async def r2_file(path: str, request: Request, user: dict = Depends(get_current_user)):
++    if not s3_client or not request.query_params.get("token"):
++        return await routes_files.download(path, user)
++    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
++    if not record:
++        raise HTTPException(status_code=404, detail="Berkas tidak ditemukan")
++    url = _signed(path, FILE_TTL, record.get("content_type", ""), record.get("original_filename", ""))
++    return RedirectResponse(url, status_code=307, headers={"Cache-Control": "private, max-age=600"})
++
++
++@router.get("/question-images/{name}")
++async def r2_question_image(name: str):
++    if not s3_client:
++        return await routes_files.question_image(name)
++    path = f"{routes_files.QIMG_PREFIX}{name}"
++    if not await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 1}):
++        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan")
++    return RedirectResponse(_public(path, PUBLIC_TTL), status_code=302, headers={"Cache-Control": "public, max-age=3600"})
++
++
++@router.get("/site-assets/{name}")
++async def r2_site_asset(name: str):
++    if not s3_client:
++        return await routes_site.site_asset(name)
++    path = f"{routes_site.SITE_PREFIX}{name}"
++    if not await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 1}):
++        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan")
++    return RedirectResponse(_public(path, PUBLIC_TTL), status_code=302, headers={"Cache-Control": "public, max-age=3600"})
++
++
++def _check() -> dict:
++    key = f"healthcheck/{uuid.uuid4().hex}.txt"
++    put_object(key, b"ok", "text/plain")
++    data, _ = get_object(key)
++    if s3_client:
++        s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=key)
++    return {"ok": data == b"ok"}
++
++
++@router.get("/admin/storage-status")
++async def storage_status(user: dict = Depends(require_roles("admin"))):
++    info = {
++        "provider": "cloudflare_r2" if s3_client else "disk_server",
++        "bucket": S3_BUCKET_NAME if s3_client else None,
++        "public_url": PUBLIC_BASE_URL or None,
++        "direct_delivery": bool(s3_client),
++    }
++    try:
++        info.update(await asyncio.to_thread(_check))
++    except Exception as e:
++        info.update({"ok": False, "error": str(e)})
++    return info
+diff --git a/backend/routes_site.py b/backend/routes_site.py
+new file mode 100644
+index 0000000..28f61b6
+--- /dev/null
++++ b/backend/routes_site.py
+@@ -0,0 +1,156 @@
++import re
++import uuid
++import asyncio
++from typing import Literal
++from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Response
++from pydantic import BaseModel, Field, field_validator
++
++from database import db
++from utils import now_iso
++from security import require_roles
++import os
++from storage import put_object, get_object, MIME_TYPES, APP_NAME, s3_client
++
++router = APIRouter(prefix="/api", tags=["site"])
++PUBLIC_BASE_URL = (os.environ.get("S3_PUBLIC_URL") or os.environ.get("R2_PUBLIC_URL") or "").rstrip("/")
++admin_only = require_roles("admin")
++
++SITE_PREFIX = f"{APP_NAME}/site-assets/"
++SITE_EXT = {"png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "mp4", "webm"}
++VIDEO_EXT = {"mp4", "webm"}
++MAX_ASSET = 5 * 1024 * 1024
++MAX_VIDEO = 15 * 1024 * 1024
++HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
++
++DEFAULTS = {
++    "site_name": "Binara LMS",
++    "tagline": "Platform Belajar Terintegrasi",
++    "logo_url": "",
++    "favicon_url": "",
++    "hero_image_url": "",
++    "login_image_url": "",
++    "og_image_url": "",
++    "footer_text": "",
++    "loader_enabled": True,
++    "loader_title": "",
++    "loader_message": "Mohon tunggu, sedang menyiapkan halaman...",
++    "loader_logo_url": "",
++    "loader_bg_color": "#0A1128",
++    "loader_text_color": "#FFFFFF",
++    "loader_accent_color": "#22D3EE",
++    "loader_style": "spinner",
++    "loader_min_ms": 800,
++    "loader_mode": "custom",
++    "loader_media_url": "",
++    "loader_media_fit": "contain",
++}
++
++
++class SiteSettingsBody(BaseModel):
++    site_name: str = Field(min_length=1, max_length=80)
++    tagline: str = Field(default="", max_length=160)
++    logo_url: str = ""
++    favicon_url: str = ""
++    hero_image_url: str = ""
++    login_image_url: str = ""
++    og_image_url: str = ""
++    footer_text: str = Field(default="", max_length=200)
++    loader_enabled: bool = True
++    loader_title: str = Field(default="", max_length=80)
++    loader_message: str = Field(default="", max_length=200)
++    loader_logo_url: str = ""
++    loader_bg_color: str = "#0A1128"
++    loader_text_color: str = "#FFFFFF"
++    loader_accent_color: str = "#22D3EE"
++    loader_style: Literal["spinner", "bar", "pulse"] = "spinner"
++    loader_min_ms: int = Field(default=800, ge=0, le=10000)
++    loader_mode: Literal["custom", "media"] = "custom"
++    loader_media_url: str = ""
++    loader_media_fit: Literal["contain", "cover"] = "contain"
++
++    @field_validator("logo_url", "favicon_url", "hero_image_url", "login_image_url", "og_image_url", "loader_logo_url", "loader_media_url")
++    @classmethod
++    def _url(cls, v: str) -> str:
++        v = (v or "").strip()
++        if v and not (v.startswith("/api/site-assets/") or v.startswith("https://")):
++            raise ValueError("URL gambar harus hasil unggahan atau diawali https://")
++        return v
++
++    @field_validator("loader_bg_color", "loader_text_color", "loader_accent_color")
++    @classmethod
++    def _color(cls, v: str) -> str:
++        if not HEX.match(v or ""):
++            raise ValueError("Warna harus format hex, contoh #0A1128")
++        return v.upper()
++
++
++async def _get_settings() -> dict:
++    doc = await db.site_settings.find_one({"id": "site"}, {"_id": 0, "id": 0}) or {}
++    return {**DEFAULTS, **{k: v for k, v in doc.items() if k in DEFAULTS}}
++
++
++@router.get("/public/site-settings")
++async def public_settings(response: Response):
++    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=120"
++    return await _get_settings()
++
++
++@router.get("/admin/site-settings")
++async def admin_settings(user: dict = Depends(admin_only)):
++    return await _get_settings()
++
++
++@router.put("/admin/site-settings")
++async def update_settings(body: SiteSettingsBody, user: dict = Depends(admin_only)):
++    data = body.model_dump()
++    data["site_name"] = data["site_name"].strip()
++    await db.site_settings.update_one(
++        {"id": "site"},
++        {"$set": {**data, "updated_at": now_iso(), "updated_by": user["id"]}, "$setOnInsert": {"id": "site"}},
++        upsert=True,
++    )
++    return await _get_settings()
++
++
++@router.post("/admin/site-assets")
++async def upload_site_asset(file: UploadFile = File(...), user: dict = Depends(admin_only)):
++    name = file.filename or ""
++    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
++    if ext not in SITE_EXT:
++        raise HTTPException(status_code=400, detail="Format harus PNG, JPG, WEBP, GIF, SVG, ICO, MP4, atau WEBM")
++    data = await file.read()
++    if ext in VIDEO_EXT and len(data) > MAX_VIDEO:
++        raise HTTPException(status_code=400, detail="Ukuran video maksimal 15 MB")
++    if ext not in VIDEO_EXT and len(data) > MAX_ASSET:
++        raise HTTPException(status_code=400, detail="Ukuran gambar maksimal 5 MB")
++    file_id = uuid.uuid4().hex
++    path = f"{SITE_PREFIX}{file_id}.{ext}"
++    content_type = {"svg": "image/svg+xml", "ico": "image/x-icon"}.get(ext) or MIME_TYPES.get(ext, "image/png")
++    try:
++        result = await asyncio.to_thread(put_object, path, data, content_type)
++    except Exception as e:
++        raise HTTPException(status_code=502, detail=f"Gagal mengunggah gambar: {e}")
++    await db.files.insert_one({
++        "id": file_id, "storage_path": result["path"], "original_filename": name,
++        "content_type": content_type, "size": len(data), "uploaded_by": user["id"],
++        "is_deleted": False, "created_at": now_iso(),
++    })
++    if s3_client and PUBLIC_BASE_URL:
++        return {"url": f"{PUBLIC_BASE_URL}/{result['path']}"}
++    return {"url": f"/api/site-assets/{result['path'][len(SITE_PREFIX):]}"}
++
++
++@router.get("/site-assets/{name}")
++async def site_asset(name: str):
++    path = f"{SITE_PREFIX}{name}"
++    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
++    if not record:
++        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan")
++    try:
++        data, _ = await asyncio.to_thread(get_object, path)
++    except Exception:
++        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan")
++    return Response(content=data, media_type=record["content_type"],
++                    headers={"Cache-Control": "public, max-age=604800, immutable", "X-Content-Type-Options": "nosniff",
++                             "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
++                             "Cross-Origin-Resource-Policy": "cross-origin"})
+diff --git a/backend/server.py b/backend/server.py
+index 64fb02b..10661d9 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -13,6 +13,8 @@ from starlette.middleware.cors import CORSMiddleware
+ from database import db, client
+ from seed import seed, seed_content, migrate_analysis
+ import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes, routes_payments
++import routes_site
++import routes_r2
+ 
+ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ logger = logging.getLogger(__name__)
+@@ -42,6 +44,7 @@ upload_folder = os.path.join(ROOT_DIR, "uploads")
+ os.makedirs(upload_folder, exist_ok=True)
+ app.mount("/uploads", StaticFiles(directory=upload_folder), name="uploads")
+ 
++app.include_router(routes_r2.router)
+ app.include_router(routes_auth.router)
+ app.include_router(routes_public.router)
+ app.include_router(routes_admin.router)
+@@ -51,6 +54,7 @@ app.include_router(routes_proctor.router)
+ app.include_router(routes_files.router)
+ app.include_router(routes_classes.router)
+ app.include_router(routes_payments.router)
++app.include_router(routes_site.router)
+ 
+ @app.get("/api/")
+ async def root():
+diff --git a/backend/storage.py b/backend/storage.py
+index d92a23f..e0d12e6 100644
+--- a/backend/storage.py
++++ b/backend/storage.py
+@@ -51,6 +51,8 @@ def _safe(path: str) -> str:
+ 
+ def put_object(path: str, data: bytes, content_type: str) -> dict:
+     safe_path = _safe(path)
++    if not s3_client and (os.environ.get("RAILWAY_ENVIRONMENT_NAME") or os.environ.get("RAILWAY_ENVIRONMENT")) and os.environ.get("STORAGE_LOCAL_FALLBACK") != "true":
++        raise RuntimeError("Penyimpanan Cloudflare R2 belum dikonfigurasi (cek R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME di Railway)")
+     if s3_client:
+         s3_client.put_object(Bucket=S3_BUCKET_NAME, Key=safe_path, Body=data, ContentType=content_type)
+     else:
+diff --git a/frontend/public/index.html b/frontend/public/index.html
+index 9e2cb9c..a881984 100644
+--- a/frontend/public/index.html
++++ b/frontend/public/index.html
+@@ -27,5 +27,91 @@
+     <body>
+         <noscript>You need to enable JavaScript to run this app.</noscript>
+         <div id="root"></div>
++        <style>
++            #boot-loader{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;transition:opacity .4s ease;font-family:Outfit,'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
++            #boot-loader .bl-logo{width:84px;height:84px;object-fit:contain;border-radius:20px}
++            #boot-loader .bl-mark{width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff}
++            #boot-loader .bl-title{font-size:22px;font-weight:700;letter-spacing:.2px;margin:0}
++            #boot-loader .bl-msg{font-size:14px;opacity:.75;margin:0;max-width:340px;line-height:1.5}
++            #boot-loader .bl-spin{width:38px;height:38px;border-radius:50%;border:4px solid rgba(255,255,255,.18);animation:blspin .8s linear infinite}
++            #boot-loader .bl-bar{width:200px;height:5px;border-radius:9px;background:rgba(255,255,255,.15);overflow:hidden;position:relative}
++            #boot-loader .bl-bar i{position:absolute;top:0;left:-40%;width:40%;height:100%;border-radius:9px;animation:blbar 1.1s ease-in-out infinite}
++            #boot-loader .bl-dots{display:flex;gap:8px}
++            #boot-loader .bl-dots i{width:11px;height:11px;border-radius:50%;animation:blpulse 1s ease-in-out infinite}
++            #boot-loader .bl-dots i:nth-child(2){animation-delay:.15s}#boot-loader .bl-dots i:nth-child(3){animation-delay:.3s}
++            @keyframes blspin{to{transform:rotate(360deg)}}
++            @keyframes blbar{0%{left:-40%}100%{left:100%}}
++            @keyframes blpulse{0%,100%{transform:scale(.6);opacity:.4}50%{transform:scale(1);opacity:1}}
++            @media (prefers-reduced-motion:reduce){#boot-loader *{animation-duration:2s!important}}
++        </style>
++        <script>
++            (function () {
++                window.__bootStart = Date.now();
++                var s = {};
++                try { s = JSON.parse(localStorage.getItem("site_settings_cache")) || {}; } catch (e) {}
++                if (s.loader_enabled === false) return;
++                var hex = /^#[0-9A-Fa-f]{6}$/;
++                var bg = hex.test(s.loader_bg_color) ? s.loader_bg_color : "#0A1128";
++                var fg = hex.test(s.loader_text_color) ? s.loader_text_color : "#FFFFFF";
++                var ac = hex.test(s.loader_accent_color) ? s.loader_accent_color : "#22D3EE";
++                var name = s.site_name || "Binara LMS";
++                var el = document.createElement("div");
++                el.id = "boot-loader";
++                el.setAttribute("role", "status");
++                el.setAttribute("aria-live", "polite");
++                el.style.background = bg;
++                el.style.color = fg;
++                var logo = s.loader_logo_url || s.logo_url;
++                if (logo && /^https?:\/\//.test(logo)) {
++                    var img = document.createElement("img");
++                    img.className = "bl-logo"; img.alt = ""; img.src = logo;
++                    el.appendChild(img);
++                } else {
++                    var mark = document.createElement("div");
++                    mark.className = "bl-mark"; mark.style.background = ac; mark.textContent = name.charAt(0).toUpperCase();
++                    el.appendChild(mark);
++                }
++                var t = document.createElement("p");
++                t.className = "bl-title"; t.textContent = s.loader_title || name;
++                el.appendChild(t);
++                var style = s.loader_style || "spinner", ind = document.createElement("div");
++                if (style === "bar") { ind.className = "bl-bar"; var b = document.createElement("i"); b.style.background = ac; ind.appendChild(b); }
++                else if (style === "pulse") { ind.className = "bl-dots"; for (var i = 0; i < 3; i++) { var d = document.createElement("i"); d.style.background = ac; ind.appendChild(d); } }
++                else { ind.className = "bl-spin"; ind.style.borderTopColor = ac; }
++                el.appendChild(ind);
++                var m = document.createElement("p");
++                m.className = "bl-msg"; m.textContent = s.loader_message == null ? "Mohon tunggu, sedang menyiapkan halaman..." : s.loader_message;
++                el.appendChild(m);
++                document.body.appendChild(el);
++                if (s.favicon_url || s.logo_url) {
++                    var link = document.createElement("link"); link.rel = "icon"; link.href = s.favicon_url || s.logo_url; document.head.appendChild(link);
++                }
++                if (document.title.indexOf("Binara LMS") > -1 && s.site_name) document.title = document.title.split("Binara LMS").join(s.site_name);
++            })();
++        </script>
++        <style>
++            #boot-loader .bl-media{max-width:min(80vw,560px);max-height:60vh;object-fit:contain;border-radius:16px}
++            #boot-loader .bl-media.bl-cover{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;border-radius:0}
++            #boot-loader .bl-cover ~ .bl-msg{position:relative;margin-top:auto;padding:10px 16px;border-radius:12px;background:rgba(0,0,0,.45);color:#fff;opacity:1}
++        </style>
++        <script>
++            (function () {
++                var s = {};
++                try { s = JSON.parse(localStorage.getItem("site_settings_cache")) || {}; } catch (e) {}
++                var fav = s.favicon_url || s.logo_url;
++                if (fav) document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(function (l) { l.href = fav; });
++                var el = document.getElementById("boot-loader"), media = s.loader_media_url;
++                if (!el || s.loader_mode !== "media" || !media || !/^https?:\/\//.test(media)) return;
++                var msg = el.querySelector(".bl-msg");
++                el.innerHTML = "";
++                var cover = s.loader_media_fit === "cover", mv = /\.(mp4|webm)(\?|$)/i.test(media);
++                var me = document.createElement(mv ? "video" : "img");
++                me.className = cover ? "bl-media bl-cover" : "bl-media";
++                if (mv) { me.muted = true; me.loop = true; me.autoplay = true; me.playsInline = true; me.setAttribute("muted", ""); me.setAttribute("playsinline", ""); } else { me.alt = ""; }
++                me.src = media;
++                el.appendChild(me);
++                if (msg && msg.textContent) el.appendChild(msg);
++            })();
++        </script>
+     </body>
+ </html>
+diff --git a/frontend/src/App.js b/frontend/src/App.js
+index 041cd1d..0af8c5a 100644
+--- a/frontend/src/App.js
++++ b/frontend/src/App.js
+@@ -41,6 +41,7 @@ import ManageUsers from "@/pages/admin/ManageUsers";
+ import CourseContent from "@/pages/admin/CourseContent";
+ import AdminAnalysis from "@/pages/admin/Analysis";
+ import ManagePayments from "@/pages/admin/ManagePayments";
++import SiteSettings from "@/pages/admin/SiteSettings";
+ import StudentPayments from "@/pages/student/StudentPayments";
+ 
+ import TutorDashboard from "@/pages/tutor/TutorDashboard";
+@@ -121,6 +122,7 @@ function AppRoutes() {
+           <Route path="/admin/users" element={<ManageUsers />} />
+           <Route path="/admin/analysis" element={<AdminAnalysis />} />
+           <Route path="/admin/payments" element={<ManagePayments />} />
++          <Route path="/admin/site-settings" element={<SiteSettings />} />
+         </Route>
+       </Route>
+ 
+diff --git a/frontend/src/components/common/SiteBrand.jsx b/frontend/src/components/common/SiteBrand.jsx
+new file mode 100644
+index 0000000..c365b6a
+--- /dev/null
++++ b/frontend/src/components/common/SiteBrand.jsx
+@@ -0,0 +1,20 @@
++import { GraduationCap } from "lucide-react";
++import { useSite, assetUrl } from "@/lib/site";
++
++const SIZE_ONLY = (cls) => cls.split(/\s+/).filter((c) => /^(h-|w-|rounded|shrink)/.test(c)).join(" ");
++
++export function SiteLogoMark({ className = "", iconClass = "h-5 w-5 text-white" }) {
++  const { logo_url, site_name } = useSite();
++  if (logo_url) return <img src={assetUrl(logo_url)} alt={site_name} className={`${SIZE_ONLY(className)} object-contain`} data-testid="site-logo-img" />;
++  return <div className={`${className} flex items-center justify-center`}><GraduationCap className={iconClass} /></div>;
++}
++
++export function SiteName() {
++  return <>{useSite().site_name}</>;
++}
++
++export function SiteLogoIcon({ children }) {
++  const { logo_url, site_name } = useSite();
++  if (logo_url) return <img src={assetUrl(logo_url)} alt={site_name} className="h-full w-full object-contain rounded-[inherit] bg-white" data-testid="site-logo-img" />;
++  return children;
++}
+diff --git a/frontend/src/components/layout/DashboardLayout.jsx b/frontend/src/components/layout/DashboardLayout.jsx
+index 2700b13..dd51fc7 100644
+--- a/frontend/src/components/layout/DashboardLayout.jsx
++++ b/frontend/src/components/layout/DashboardLayout.jsx
+@@ -5,6 +5,7 @@ import {
+   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
+   Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2, Wallet,
+ } from "lucide-react";
++import { Settings2 } from "lucide-react";
+ import { useAuth, roleLabel } from "@/context/AuthContext";
+ import api from "@/lib/api";
+ import { SheetTitle, SheetDescription } from "@/components/ui/sheet"; 
+@@ -25,6 +26,7 @@ const NAV = {
+     { to: "/admin/broadcasts", label: "Broadcast Proktor", icon: Radio },
+     { to: "/admin/partnerships", label: "Kemitraan", icon: Handshake },
+     { to: "/admin/users", label: "Pengguna & Sekolah", icon: Users },
++    { to: "/admin/site-settings", label: "Pengaturan Website", icon: Settings2 },
+   ],
+   student: [
+     { to: "/student", label: "Ringkasan", icon: LayoutDashboard, end: true },
+diff --git a/frontend/src/hooks/useSeo.js b/frontend/src/hooks/useSeo.js
+index 9133a90..d896c70 100644
+--- a/frontend/src/hooks/useSeo.js
++++ b/frontend/src/hooks/useSeo.js
+@@ -1,4 +1,5 @@
+ import { useEffect } from "react";
++import { useSite, assetUrl } from "@/lib/site";
+ 
+ export const DEFAULT_OG_IMAGE = "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&w=1200&q=80";
+ 
+@@ -26,7 +27,13 @@ function setCanonical(url) {
+   el.setAttribute("href", url);
+ }
+ 
+-export default function useSeo({ title, description, image = DEFAULT_OG_IMAGE, type = "website" }) {
++export default function useSeo({ title: rawTitle, description: rawDesc, image: rawImage, type = "website" }) {
++  const site = useSite();
++  const brand = (t) => (t ? t.split("Binara LMS").join(site.site_name) : t);
++  const title = brand(rawTitle);
++  const description = brand(rawDesc);
++  const image = rawImage || assetUrl(site.og_image_url) || assetUrl(site.hero_image_url) || DEFAULT_OG_IMAGE;
++  const siteName = site.site_name;
+   useEffect(() => {
+     const url = window.location.href;
+     if (title) document.title = title;
+@@ -37,10 +44,10 @@ export default function useSeo({ title, description, image = DEFAULT_OG_IMAGE, t
+     upsert("property", "og:type", type);
+     upsert("property", "og:url", url);
+     upsert("property", "og:image", image);
+-    upsert("property", "og:site_name", "Binara LMS");
++    upsert("property", "og:site_name", siteName);
+     upsert("name", "twitter:card", image ? "summary_large_image" : "summary");
+     upsert("name", "twitter:title", title);
+     upsert("name", "twitter:description", description);
+     upsert("name", "twitter:image", image);
+-  }, [title, description, image, type]);
++  }, [title, description, image, type, siteName]);
+ }
+diff --git a/frontend/src/index.js b/frontend/src/index.js
+index b480ce6..c498da7 100644
+--- a/frontend/src/index.js
++++ b/frontend/src/index.js
+@@ -6,8 +6,10 @@ import "katex/dist/katex.min.css";
+ import "@/index.css";
+ import App from "@/App";
+ import { initPwa } from "@/lib/pwa";
++import { loadSite, hideBootLoader } from "@/lib/site";
+ 
+ initPwa();
++hideBootLoader(loadSite());
+ 
+ const queryClient = new QueryClient({
+   defaultOptions: {
+diff --git a/frontend/src/lib/site.js b/frontend/src/lib/site.js
+new file mode 100644
+index 0000000..502d62a
+--- /dev/null
++++ b/frontend/src/lib/site.js
+@@ -0,0 +1,76 @@
++import { useSyncExternalStore } from "react";
++import api, { cleanBaseUrl } from "@/lib/api";
++
++export const SITE_CACHE_KEY = "site_settings_cache";
++export const DEFAULT_SITE = {
++  site_name: "Binara LMS",
++  tagline: "Platform Belajar Terintegrasi",
++  logo_url: "", favicon_url: "", hero_image_url: "", login_image_url: "", og_image_url: "", footer_text: "",
++  loader_enabled: true, loader_title: "", loader_message: "Mohon tunggu, sedang menyiapkan halaman...", loader_logo_url: "",
++  loader_bg_color: "#0A1128", loader_text_color: "#FFFFFF", loader_accent_color: "#22D3EE", loader_style: "spinner", loader_min_ms: 800,
++  loader_mode: "custom", loader_media_url: "", loader_media_fit: "contain",
++};
++
++export const isVideo = (u) => /\.(mp4|webm)(\?|$)/i.test(u || "");
++
++export const assetUrl = (u) => (!u ? "" : u.startsWith("http") ? u : `${cleanBaseUrl}${u}`);
++
++const readCache = () => {
++  try { return { ...DEFAULT_SITE, ...(JSON.parse(localStorage.getItem(SITE_CACHE_KEY)) || {}) }; } catch { return DEFAULT_SITE; }
++};
++
++let site = readCache();
++const listeners = new Set();
++
++function setLink(rel, href) {
++  document.querySelectorAll(`link[rel="${rel}"]`).forEach((el) => el.setAttribute("href", href));
++  if (!document.querySelector(`link[rel="${rel}"]`)) {
++    const el = document.createElement("link");
++    el.setAttribute("rel", rel);
++    el.setAttribute("href", href);
++    document.head.appendChild(el);
++  }
++}
++
++function applyHead(s) {
++  const fav = assetUrl(s.favicon_url || s.logo_url);
++  if (fav) { setLink("icon", fav); setLink("apple-touch-icon", fav); }
++  const appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
++  if (appTitle) appTitle.setAttribute("content", s.site_name);
++  if (document.title.includes(DEFAULT_SITE.site_name)) document.title = document.title.split(DEFAULT_SITE.site_name).join(s.site_name);
++}
++
++function setSite(next) {
++  site = { ...DEFAULT_SITE, ...next };
++  const resolved = { ...site, logo_url: assetUrl(site.logo_url), favicon_url: assetUrl(site.favicon_url), loader_logo_url: assetUrl(site.loader_logo_url) };
++  resolved.loader_media_url = assetUrl(site.loader_media_url);
++  try { localStorage.setItem(SITE_CACHE_KEY, JSON.stringify(resolved)); } catch { /* storage unavailable */ }
++  applyHead(site);
++  listeners.forEach((cb) => cb());
++}
++
++export function loadSite() {
++  applyHead(site);
++  return api.get("/public/site-settings").then((r) => setSite(r.data)).catch(() => {});
++}
++
++export const updateSiteLocal = (data) => setSite(data);
++
++export function useSite() {
++  return useSyncExternalStore((cb) => { listeners.add(cb); return () => listeners.delete(cb); }, () => site);
++}
++
++// Hides the boot loader (rendered by public/index.html) once settings are ready and min duration passed.
++export function hideBootLoader(ready) {
++  const el = document.getElementById("boot-loader");
++  if (!el) return;
++  const start = window.__bootStart || Date.now();
++  const timeout = new Promise((r) => setTimeout(r, 8000));
++  Promise.race([ready, timeout]).then(() => {
++    const wait = Math.max(0, (Number(site.loader_min_ms) || 0) - (Date.now() - start));
++    setTimeout(() => {
++      el.style.opacity = "0";
++      setTimeout(() => el.remove(), 400);
++    }, site.loader_enabled ? wait : 0);
++  });
++}
+diff --git a/frontend/src/pages/admin/SiteSettings.js b/frontend/src/pages/admin/SiteSettings.js
+new file mode 100644
+index 0000000..cc80295
+--- /dev/null
++++ b/frontend/src/pages/admin/SiteSettings.js
+@@ -0,0 +1,258 @@
++import { useEffect, useRef, useState } from "react";
++import { Loader2, Upload, Trash2, Save, Globe, Image as ImageIcon, Timer, HardDrive } from "lucide-react";
++import api, { apiError } from "@/lib/api";
++import { assetUrl, updateSiteLocal, DEFAULT_SITE, isVideo } from "@/lib/site";
++import PageHeader from "@/components/common/PageHeader";
++import { Loading } from "@/components/common/States";
++import { Button } from "@/components/ui/button";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Switch } from "@/components/ui/switch";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { toast } from "sonner";
++
++function Section({ icon: Icon, title, desc, children }) {
++  return (
++    <section className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6">
++      <div className="flex items-start gap-3 mb-5">
++        <div className="h-9 w-9 rounded-lg bg-[#E6F5F8] flex items-center justify-center shrink-0"><Icon className="h-4 w-4 text-[#0E7490]" /></div>
++        <div><h2 className="font-bold text-[#0A1128]">{title}</h2><p className="text-xs text-[#475569] mt-0.5">{desc}</p></div>
++      </div>
++      <div className="space-y-4">{children}</div>
++    </section>
++  );
++}
++
++const IMG_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon,.ico";
++
++function MediaThumb({ src, testid }) {
++  if (isVideo(src)) return <video src={assetUrl(src)} autoPlay muted loop playsInline className="h-full w-full object-contain" data-testid={`${testid}-preview`} />;
++  return <img src={assetUrl(src)} alt="" className="h-full w-full object-contain" data-testid={`${testid}-preview`} />;
++}
++
++function ImageField({ label, hint, value, onChange, testid, preview = "h-16 w-16", accept = IMG_ACCEPT }) {
++  const ref = useRef(null);
++  const [busy, setBusy] = useState(false);
++  const pick = async (e) => {
++    const file = e.target.files?.[0];
++    e.target.value = "";
++    if (!file) return;
++    const fd = new FormData();
++    fd.append("file", file);
++    setBusy(true);
++    try { const { data } = await api.post("/admin/site-assets", fd); onChange(data.url); toast.success("Gambar terunggah"); }
++    catch (err) { toast.error(apiError(err)); }
++    finally { setBusy(false); }
++  };
++  return (
++    <div>
++      <Label className="text-[#0A1128]">{label}</Label>
++      {hint && <p className="text-[11px] text-[#94A3B8] mt-0.5">{hint}</p>}
++      <div className="mt-2 flex items-center gap-3 flex-wrap">
++        <div className={`${preview} rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC] flex items-center justify-center overflow-hidden`}>
++          {value ? <MediaThumb src={value} testid={testid} /> : <ImageIcon className="h-5 w-5 text-[#CBD5E1]" />}
++        </div>
++        <input ref={ref} type="file" accept={accept} className="hidden" onChange={pick} data-testid={`${testid}-input`} />
++        <Button type="button" variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => ref.current?.click()} data-testid={`${testid}-upload`}>
++          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Unggah
++        </Button>
++        {value && <Button type="button" variant="ghost" size="sm" className="rounded-full text-red-600" onClick={() => onChange("")} data-testid={`${testid}-remove`}><Trash2 className="h-4 w-4" /> Hapus</Button>}
++      </div>
++    </div>
++  );
++}
++
++function ColorField({ label, value, onChange, testid }) {
++  return (
++    <div>
++      <Label className="text-[#0A1128] text-xs">{label}</Label>
++      <div className="mt-1.5 flex items-center gap-2">
++        <input type="color" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="h-10 w-12 rounded-md border border-[#E2E8F0] cursor-pointer bg-white" data-testid={`${testid}-picker`} />
++        <Input value={value} onChange={(e) => onChange(e.target.value)} className="h-10 font-mono2 text-xs" maxLength={7} data-testid={testid} />
++      </div>
++    </div>
++  );
++}
++
++function MediaPreview({ f }) {
++  const cover = f.loader_media_fit === "cover";
++  const cls = cover ? "absolute inset-0 h-full w-full object-cover" : "max-h-40 max-w-[80%] object-contain rounded-xl";
++  return (
++    <div className="relative rounded-xl h-64 overflow-hidden flex flex-col items-center justify-center gap-3 text-center p-4" style={{ background: f.loader_bg_color, color: f.loader_text_color }} data-testid="loader-preview">
++      {isVideo(f.loader_media_url)
++        ? <video key={f.loader_media_url} src={assetUrl(f.loader_media_url)} autoPlay muted loop playsInline className={cls} data-testid="loader-preview-media" />
++        : <img src={assetUrl(f.loader_media_url)} alt="" className={cls} data-testid="loader-preview-media" />}
++      {f.loader_message && <p className={`relative text-xs max-w-xs ${cover ? "mt-auto px-3 py-2 rounded-lg bg-black/45 text-white" : "opacity-75"}`}>{f.loader_message}</p>}
++    </div>
++  );
++}
++
++function LoaderPreview({ f }) {
++  if (f.loader_mode === "media" && f.loader_media_url) return <MediaPreview f={f} />;
++  const logo = f.loader_logo_url || f.logo_url;
++  const ind = f.loader_style === "bar"
++    ? <div className="w-40 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.15)" }}><div className="h-full w-2/5 rounded-full animate-pulse" style={{ background: f.loader_accent_color }} /></div>
++    : f.loader_style === "pulse"
++      ? <div className="flex gap-2">{[0, 1, 2].map((i) => <span key={i} className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ background: f.loader_accent_color, animationDelay: `${i * 150}ms` }} />)}</div>
++      : <div className="h-8 w-8 rounded-full border-4 animate-spin" style={{ borderColor: "rgba(255,255,255,.18)", borderTopColor: f.loader_accent_color }} />;
++  return (
++    <div className="rounded-xl h-64 flex flex-col items-center justify-center gap-3 text-center p-4" style={{ background: f.loader_bg_color, color: f.loader_text_color }} data-testid="loader-preview">
++      {logo ? <img src={assetUrl(logo)} alt="" className="h-14 w-14 object-contain rounded-xl" /> : <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl font-extrabold text-white" style={{ background: f.loader_accent_color }}>{(f.site_name || "B")[0].toUpperCase()}</div>}
++      <p className="font-bold text-lg">{f.loader_title || f.site_name}</p>
++      {ind}
++      <p className="text-xs opacity-75 max-w-xs">{f.loader_message}</p>
++    </div>
++  );
++}
++
++function StorageStatus() {
++  const [st, setSt] = useState(null);
++  const [tick, setTick] = useState(0);
++  useEffect(() => { setSt(null); api.get("/admin/storage-status").then((r) => setSt(r.data)).catch((e) => setSt({ ok: false, error: apiError(e) })); }, [tick]);
++  const r2 = st?.provider === "cloudflare_r2";
++  const good = st && r2 && st.ok;
++  return (
++    <Section icon={HardDrive} title="Penyimpanan Berkas" desc="Semua PDF, video, gambar soal, dokumen, logo & loading screen disimpan di sini.">
++      {!st ? <Loader2 className="h-4 w-4 animate-spin text-[#94A3B8]" /> : (
++        <div className={`rounded-lg p-3 text-sm ${good ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`} data-testid="storage-status">
++          <p className="font-semibold">{good ? "Cloudflare R2 aktif & berfungsi" : r2 ? "Cloudflare R2 bermasalah" : "Cloudflare R2 belum terhubung"}</p>
++          {st.bucket && <p className="text-xs mt-1">Bucket: <span className="font-mono2">{st.bucket}</span></p>}
++          {good && <p className="text-xs mt-1">Video & PDF dibuka langsung dari Cloudflare, tidak membebani server.</p>}
++          {!r2 && <p className="text-xs mt-1">Isi variabel R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL di server.</p>}
++          {st.error && <p className="text-xs mt-1 break-all">{st.error}</p>}
++        </div>
++      )}
++      <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setTick((t) => t + 1)} data-testid="storage-status-refresh">Cek ulang</Button>
++    </Section>
++  );
++}
++
++export default function SiteSettings() {
++  const [f, setF] = useState(null);
++  const [saving, setSaving] = useState(false);
++  const set = (k) => (v) => setF((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
++
++  useEffect(() => { api.get("/admin/site-settings").then((r) => setF(r.data)).catch((e) => toast.error(apiError(e))); }, []);
++  if (!f) return <Loading />;
++
++  const save = async () => {
++    setSaving(true);
++    try {
++      const { data } = await api.put("/admin/site-settings", { ...f, loader_min_ms: Number(f.loader_min_ms) || 0 });
++      setF(data);
++      updateSiteLocal(data);
++      toast.success("Pengaturan website tersimpan");
++    } catch (e) { toast.error(apiError(e)); }
++    finally { setSaving(false); }
++  };
++
++  return (
++    <div className="space-y-6 pb-24" data-testid="site-settings-page">
++      <PageHeader title="Pengaturan Website" subtitle="Atur nama, logo, ikon tab browser, gambar, dan loading screen website." />
++      <div className="grid lg:grid-cols-2 gap-6">
++        <Section icon={Globe} title="Identitas Website" desc="Tampil di header, footer, login, dashboard, dan judul tab browser.">
++          <div>
++            <Label className="text-[#0A1128]">Nama Website</Label>
++            <Input value={f.site_name} onChange={set("site_name")} maxLength={80} className="mt-1.5 h-11" data-testid="site-name-input" />
++          </div>
++          <div>
++            <Label className="text-[#0A1128]">Tagline</Label>
++            <Input value={f.tagline} onChange={set("tagline")} maxLength={160} className="mt-1.5 h-11" data-testid="site-tagline-input" />
++          </div>
++          <div>
++            <Label className="text-[#0A1128]">Teks Footer</Label>
++            <Input value={f.footer_text} onChange={set("footer_text")} maxLength={200} placeholder="Learning Management System berbasis RBAC." className="mt-1.5 h-11" data-testid="site-footer-input" />
++          </div>
++          <ImageField label="Logo Website" hint="PNG/SVG transparan, persegi, min. 256×256 px." value={f.logo_url} onChange={set("logo_url")} testid="site-logo" />
++          <ImageField label="Ikon Tab Browser (Favicon)" hint="Persegi 64×64 / 128×128 px (PNG atau ICO). Kosongkan untuk memakai logo." value={f.favicon_url} onChange={set("favicon_url")} testid="site-favicon" preview="h-10 w-10" />
++        </Section>
++
++        <Section icon={ImageIcon} title="Foto yang Ditampilkan" desc="Gambar utama di halaman depan, panel login, dan gambar saat link dibagikan.">
++          <ImageField label="Foto Utama Halaman Depan (Hero)" hint="Lanskap, min. 1200×900 px." value={f.hero_image_url} onChange={set("hero_image_url")} testid="site-hero" preview="h-20 w-32" />
++          <ImageField label="Foto Latar Panel Login" hint="Tampil samar di panel kiri halaman login (laptop/PC)." value={f.login_image_url} onChange={set("login_image_url")} testid="site-login-image" preview="h-20 w-32" />
++          <ImageField label="Gambar Bagikan Link (WhatsApp/Sosmed)" hint="1200×630 px. Kosongkan untuk memakai foto utama." value={f.og_image_url} onChange={set("og_image_url")} testid="site-og" preview="h-20 w-32" />
++        </Section>
++
++        <Section icon={Timer} title="Loading Screen" desc="Tampil saat website pertama kali dibuka, termasuk saat trafik sedang tinggi.">
++          <div className="flex items-center justify-between rounded-lg bg-[#F8FAFC] p-3">
++            <Label className="text-[#0A1128]">Aktifkan loading screen</Label>
++            <Switch checked={f.loader_enabled} onCheckedChange={set("loader_enabled")} data-testid="loader-enabled-switch" />
++          </div>
++          <div>
++            <Label className="text-[#0A1128]">Jenis Loading Screen</Label>
++            <Select value={f.loader_mode} onValueChange={set("loader_mode")}>
++              <SelectTrigger className="mt-1.5 h-11" data-testid="loader-mode-select"><SelectValue /></SelectTrigger>
++              <SelectContent>
++                <SelectItem value="custom">Kustom (logo, judul, animasi)</SelectItem>
++                <SelectItem value="media">GIF / Video pendek</SelectItem>
++              </SelectContent>
++            </Select>
++          </div>
++          {f.loader_mode === "media" && (
++            <div className="space-y-4 rounded-lg border border-[#E2E8F0] p-3" data-testid="loader-media-fields">
++              <ImageField label="GIF / Video Loading" hint="GIF/PNG/WEBP maks. 5 MB, atau video MP4/WEBM maks. 15 MB (disarankan 2–6 detik, diputar berulang tanpa suara)." value={f.loader_media_url} onChange={set("loader_media_url")} testid="loader-media" preview="h-20 w-32" accept="image/gif,image/png,image/jpeg,image/webp,video/mp4,video/webm" />
++              <div>
++                <Label className="text-[#0A1128]">Tampilan Media</Label>
++                <Select value={f.loader_media_fit} onValueChange={set("loader_media_fit")}>
++                  <SelectTrigger className="mt-1.5 h-11" data-testid="loader-media-fit-select"><SelectValue /></SelectTrigger>
++                  <SelectContent>
++                    <SelectItem value="contain">Di tengah (ukuran asli)</SelectItem>
++                    <SelectItem value="cover">Penuh layar</SelectItem>
++                  </SelectContent>
++                </Select>
++              </div>
++              {!f.loader_media_url && <p className="text-[11px] text-amber-600">Belum ada media — loading screen kustom akan dipakai.</p>}
++            </div>
++          )}
++          {f.loader_mode !== "media" && <div className="grid sm:grid-cols-2 gap-4">
++            <div>
++              <Label className="text-[#0A1128]">Judul</Label>
++              <Input value={f.loader_title} onChange={set("loader_title")} maxLength={80} placeholder={f.site_name} className="mt-1.5 h-11" data-testid="loader-title-input" />
++            </div>
++            <div>
++              <Label className="text-[#0A1128]">Gaya Animasi</Label>
++              <Select value={f.loader_style} onValueChange={set("loader_style")}>
++                <SelectTrigger className="mt-1.5 h-11" data-testid="loader-style-select"><SelectValue /></SelectTrigger>
++                <SelectContent>
++                  <SelectItem value="spinner">Lingkaran berputar</SelectItem>
++                  <SelectItem value="bar">Garis progres</SelectItem>
++                  <SelectItem value="pulse">Titik berdenyut</SelectItem>
++                </SelectContent>
++              </Select>
++            </div>
++          </div>}
++          <div>
++            <Label className="text-[#0A1128]">Pesan</Label>
++            <Input value={f.loader_message} onChange={set("loader_message")} maxLength={200} className="mt-1.5 h-11" data-testid="loader-message-input" />
++          </div>
++          <div className="grid grid-cols-3 gap-3">
++            <ColorField label="Latar" value={f.loader_bg_color} onChange={set("loader_bg_color")} testid="loader-bg-color" />
++            <ColorField label="Teks" value={f.loader_text_color} onChange={set("loader_text_color")} testid="loader-text-color" />
++            <ColorField label="Aksen" value={f.loader_accent_color} onChange={set("loader_accent_color")} testid="loader-accent-color" />
++          </div>
++          <div>
++            <Label className="text-[#0A1128]">Durasi minimal tampil (detik)</Label>
++            <Input type="number" min={0} max={10} step={0.1} value={(Number(f.loader_min_ms) || 0) / 1000} onChange={(e) => set("loader_min_ms")(Math.round(Math.min(10, Math.max(0, Number(e.target.value) || 0)) * 1000))} className="mt-1.5 h-11 w-32" data-testid="loader-min-input" />
++            <p className="text-[11px] text-[#94A3B8] mt-1">Loading screen tetap tampil sampai website siap, lalu minimal selama durasi ini.</p>
++          </div>
++          {f.loader_mode !== "media" && <ImageField label="Logo Loading Screen" hint="Kosongkan untuk memakai logo website." value={f.loader_logo_url} onChange={set("loader_logo_url")} testid="loader-logo" />}
++        </Section>
++
++        <Section icon={Timer} title="Pratinjau Loading Screen" desc="Tampilan yang dilihat pengunjung saat website dibuka.">
++          <LoaderPreview f={f} />
++          <Button type="button" variant="outline" className="rounded-full" onClick={() => setF((x) => ({ ...x, ...Object.fromEntries(Object.entries(DEFAULT_SITE).filter(([k]) => k.startsWith("loader_"))) }))} data-testid="loader-reset">
++            Kembalikan loading screen bawaan
++          </Button>
++        </Section>
++
++        <StorageStatus />
++      </div>
++
++      <div className="fixed bottom-0 inset-x-0 lg:left-64 z-30 border-t border-[#E2E8F0] bg-white/90 backdrop-blur px-4 sm:px-8 py-3 flex justify-end">
++        <Button onClick={save} disabled={saving} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74] px-6" data-testid="site-settings-save">
++          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Simpan Pengaturan
++        </Button>
++      </div>
++    </div>
++  );
++}

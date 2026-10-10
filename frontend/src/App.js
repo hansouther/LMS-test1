@@ -37,10 +37,12 @@ import TryoutResults from "@/pages/admin/TryoutResults";
 import TryoutMonitor from "@/pages/admin/TryoutMonitor";
 import ManageBroadcast from "@/pages/admin/ManageBroadcast";
 import ManagePartnerships from "@/pages/admin/ManagePartnerships";
+import SiteSettings from "@/pages/admin/SiteSettings";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import CourseContent from "@/pages/admin/CourseContent";
 import AdminAnalysis from "@/pages/admin/Analysis";
 import ManagePayments from "@/pages/admin/ManagePayments";
+import SiteSettings from "@/pages/admin/SiteSettings";
 import StudentPayments from "@/pages/student/StudentPayments";
 
 import TutorDashboard from "@/pages/tutor/TutorDashboard";
@@ -121,6 +123,7 @@ function AppRoutes() {
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/analysis" element={<AdminAnalysis />} />
           <Route path="/admin/payments" element={<ManagePayments />} />
+          <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SiteSettings /></ProtectedRoute>} />
         </Route>
       </Route>
 

@@ -8,6 +8,7 @@ import PageHeader from "@/components/common/PageHeader";
 import StatCard from "@/components/common/StatCard";
 import { Loading } from "@/components/common/States";
 
+
 export default function AdminDashboard() {
   const { data, loading } = useFetch("/admin/stats");
 

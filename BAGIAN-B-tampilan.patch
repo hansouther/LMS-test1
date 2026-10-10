@@ -1,0 +1,190 @@
+diff --git a/frontend/src/components/layout/DashboardLayout.jsx b/frontend/src/components/layout/DashboardLayout.jsx
+index dd51fc7..fcfe8c2 100644
+--- a/frontend/src/components/layout/DashboardLayout.jsx
++++ b/frontend/src/components/layout/DashboardLayout.jsx
+@@ -6,6 +6,7 @@ import {
+   Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2, Wallet,
+ } from "lucide-react";
+ import { Settings2 } from "lucide-react";
++import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
+ import { useAuth, roleLabel } from "@/context/AuthContext";
+ import api from "@/lib/api";
+ import { SheetTitle, SheetDescription } from "@/components/ui/sheet"; 
+@@ -84,10 +85,10 @@ function Brand() {
+   return (
+     <div className="flex items-center gap-2.5 px-5 h-16 border-b border-[#E2E8F0]">
+       <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center shadow-md shadow-[#0E7490]/30">
+-        <GraduationCap className="h-5 w-5 text-white" />
++        <SiteLogoIcon><GraduationCap className="h-5 w-5 text-white" /></SiteLogoIcon>
+       </div>
+       <div className="leading-tight">
+-        <p className="font-head font-bold text-[#0A1128] text-[15px]">Binara LMS</p>
++        <p className="font-head font-bold text-[#0A1128] text-[15px]"><SiteName /></p>
+         <p className="text-[10px] uppercase tracking-widest text-[#94A3B8]">Learning System</p>
+       </div>
+     </div>
+diff --git a/frontend/src/components/public/PublicShell.js b/frontend/src/components/public/PublicShell.js
+index bae5f56..7cbb288 100644
+--- a/frontend/src/components/public/PublicShell.js
++++ b/frontend/src/components/public/PublicShell.js
+@@ -1,6 +1,7 @@
+ import { Link } from "react-router-dom";
+ import { useState, useEffect } from "react";
+ import { GraduationCap } from "lucide-react";
++import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
+ import { Button } from "@/components/ui/button";
+ 
+ export function PublicHeader() {
+@@ -15,9 +16,9 @@ export function PublicHeader() {
+       <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+         <Link to="/" className="flex items-center gap-2.5" data-testid="public-logo">
+           <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center shadow-md shadow-[#0E7490]/30">
+-            <GraduationCap className="h-5 w-5 text-white" />
++            <SiteLogoIcon><GraduationCap className="h-5 w-5 text-white" /></SiteLogoIcon>
+           </div>
+-          <span className="font-head font-bold text-[#0A1128] text-lg">Binara LMS</span>
++          <span className="font-head font-bold text-[#0A1128] text-lg"><SiteName /></span>
+         </Link>
+         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
+           <Link to="/" className="hover:text-[#0E7490] transition-colors duration-200">Beranda</Link>
+@@ -39,8 +40,8 @@ export function PublicFooter() {
+     <footer className="bg-[#0A1128] text-white py-12">
+       <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+         <div className="flex items-center gap-2.5">
+-          <div className="h-8 w-8 rounded-lg bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-4 w-4 text-white" /></div>
+-          <span className="font-head font-bold">Binara LMS</span>
++          <div className="h-8 w-8 rounded-lg bg-[#0E7490] flex items-center justify-center"><SiteLogoIcon><GraduationCap className="h-4 w-4 text-white" /></SiteLogoIcon></div>
++          <span className="font-head font-bold"><SiteName /></span>
+         </div>
+         <div className="flex gap-6 text-sm text-white/70">
+           <Link to="/kursus" className="hover:text-white transition-colors duration-200">Kursus</Link>
+@@ -48,7 +49,7 @@ export function PublicFooter() {
+           <Link to="/berita" className="hover:text-white transition-colors duration-200">Berita</Link>
+           <Link to="/login" className="hover:text-white transition-colors duration-200">Masuk Portal</Link>
+         </div>
+-        <p className="text-sm text-white/60">© 2026 Binara LMS.</p>
++        <p className="text-sm text-white/60">© 2026 <SiteName />.</p>
+       </div>
+     </footer>
+   );
+diff --git a/frontend/src/pages/Landing.js b/frontend/src/pages/Landing.js
+index d38a5f8..ac46407 100644
+--- a/frontend/src/pages/Landing.js
++++ b/frontend/src/pages/Landing.js
+@@ -16,6 +16,8 @@ import MonthCalendar from "@/components/public/MonthCalendar";
+ import useSeo from "@/hooks/useSeo";
+ import { toast } from "sonner";
+ 
++import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
++import { useSite, assetUrl } from "@/lib/site";
+ const HERO = "https://images.unsplash.com/photo-1543269865-cbf427effbad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzdHVkZW50cyUyMGxlYXJuaW5nfGVufDB8fHx8MTc4NzE1MDU5OHww&ixlib=rb-4.1.0&q=85";
+ 
+ const PORTALS = [
+@@ -44,9 +46,9 @@ function Header() {
+       <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+         <a href="#top" className="flex items-center gap-2.5" data-testid="landing-logo">
+           <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center shadow-md shadow-[#0E7490]/30">
+-            <GraduationCap className="h-5 w-5 text-white" />
++            <SiteLogoIcon><GraduationCap className="h-5 w-5 text-white" /></SiteLogoIcon>
+           </div>
+-          <span className="font-head font-bold text-[#0A1128] text-lg">Binara LMS</span>
++          <span className="font-head font-bold text-[#0A1128] text-lg"><SiteName /></span>
+         </a>
+         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#475569]">
+           <a href="#cara" className="hover:text-[#0E7490] transition-colors duration-200">Cara Kerja</a>
+@@ -132,6 +134,7 @@ function PartnershipForm() {
+ }
+ 
+ export default function Landing() {
++  const site = useSite();
+   const [news, setNews] = useState([]);
+   const [calendar, setCalendar] = useState([]);
+   const [serverNow, setServerNow] = useState(null);
+@@ -165,7 +168,7 @@ export default function Landing() {
+               Satu ekosistem untuk <span className="text-[#0E7490]">belajar</span>, mengajar & <span className="text-[#C9A227]">memantau</span> prestasi.
+             </h1>
+             <p className="mt-6 text-base sm:text-lg text-[#475569] max-w-xl">
+-              Binara LMS menghubungkan Admin, Siswa, Tentor, dan Proktor sekolah mitra dalam satu alur data yang mulus — dari bank soal hingga analitik nilai.
++              <SiteName /> menghubungkan Admin, Siswa, Tentor, dan Proktor sekolah mitra dalam satu alur data yang mulus — dari bank soal hingga analitik nilai.
+             </p>
+             <div className="mt-8 flex flex-wrap gap-3">
+               <Button onClick={() => navigate("/register")} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74] h-12 px-7 text-base" data-testid="hero-cta-primary">
+@@ -188,7 +191,7 @@ export default function Landing() {
+           </motion.div>
+           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }} className="relative">
+             <div className="absolute -inset-4 bg-gradient-to-tr from-[#0E7490]/20 to-[#C9A227]/20 rounded-[2rem] blur-2xl" />
+-            <img src={HERO} alt="Siswa belajar" className="relative rounded-[1.5rem] w-full h-[440px] object-cover border border-white shadow-2xl" />
++            <img src={assetUrl(site.hero_image_url) || HERO} alt="Siswa belajar" className="relative rounded-[1.5rem] w-full h-[440px] object-cover border border-white shadow-2xl" />
+           </motion.div>
+         </div>
+       </section>
+@@ -197,7 +200,7 @@ export default function Landing() {
+       <section id="cara" className="py-20 bg-[#EFF6F8]">
+         <div className="max-w-7xl mx-auto px-5 sm:px-8">
+           <div className="max-w-2xl">
+-            <h2 className="text-3xl sm:text-4xl font-bold">Cara menggunakan Binara LMS</h2>
++            <h2 className="text-3xl sm:text-4xl font-bold">Cara menggunakan <SiteName /></h2>
+             <p className="mt-3 text-[#475569]">Empat langkah sederhana untuk mulai dari pendaftaran hingga pemantauan prestasi.</p>
+           </div>
+           <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+@@ -297,10 +300,10 @@ export default function Landing() {
+       <footer className="bg-[#0A1128] text-white py-12">
+         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+           <div className="flex items-center gap-2.5">
+-            <div className="h-8 w-8 rounded-lg bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-4 w-4 text-white" /></div>
+-            <span className="font-head font-bold">Binara LMS</span>
++            <div className="h-8 w-8 rounded-lg bg-[#0E7490] flex items-center justify-center"><SiteLogoIcon><GraduationCap className="h-4 w-4 text-white" /></SiteLogoIcon></div>
++            <span className="font-head font-bold"><SiteName /></span>
+           </div>
+-          <p className="text-sm text-white/60">© 2026 Binara LMS. Learning Management System berbasis RBAC.</p>
++          <p className="text-sm text-white/60">© 2026 <SiteName />. {site.footer_text || "Learning Management System berbasis RBAC."}</p>
+           <div className="flex gap-3">
+             <Link to="/login"><Button variant="outline" className="rounded-full border-white/20 bg-transparent text-white hover:bg-white hover:text-[#0A1128]" data-testid="footer-login-btn">Masuk Portal</Button></Link>
+           </div>
+diff --git a/frontend/src/pages/Login.js b/frontend/src/pages/Login.js
+index b724375..28e7031 100644
+--- a/frontend/src/pages/Login.js
++++ b/frontend/src/pages/Login.js
+@@ -10,7 +10,11 @@ import { Label } from "@/components/ui/label";
+ import { toast } from "sonner";
+ 
+ 
++import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
++import { useSite, assetUrl } from "@/lib/site";
++
+ export default function Login() {
++  const site = useSite();
+   const { user, setUser } = useAuth();
+   const navigate = useNavigate();
+   const [email, setEmail] = useState("");
+@@ -63,24 +67,25 @@ export default function Login() {
+       <div className="hidden lg:flex flex-col justify-between bg-[#0A1128] text-white p-12 relative overflow-hidden">
+         <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#0E7490]/30 blur-3xl" />
+         <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-[#C9A227]/20 blur-3xl" />
++        {site.login_image_url && <img src={assetUrl(site.login_image_url)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" data-testid="login-side-image" />}
+         <Link to="/" className="relative flex items-center gap-2.5">
+-          <div className="h-10 w-10 rounded-xl bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-5 w-5" /></div>
+-          <span className="font-head font-bold text-xl">BINARA LABS</span>
++          <div className="h-10 w-10 rounded-xl bg-[#0E7490] flex items-center justify-center"><SiteLogoIcon><GraduationCap className="h-5 w-5" /></SiteLogoIcon></div>
++          <span className="font-head font-bold text-xl"><SiteName /></span>
+         </Link>
+         <div className="relative">
+           <h2 className="text-4xl font-bold leading-tight">Wujudkan Versi Terbaik Dirimu.</h2>
+           <p className="mt-4 text-white/70 max-w-md">Masuk ke portal Anda — Admin, Siswa, Tentor, atau Proktor. Semua terhubung dalam satu sistem yang aman.</p>
+           <div className="mt-6 flex items-center gap-2 text-sm text-white/60"><ShieldCheck className="h-4 w-4 text-[#10B981]" /> Autentikasi berbasis peran (RBAC)</div>
+         </div>
+-        <p className="relative text-xs text-white/40">© 2026 Binara Labs</p>
++        <p className="relative text-xs text-white/40">© 2026 <SiteName /></p>
+       </div>
+ 
+       {/* Form */}
+       <div className="flex items-center justify-center p-6 sm:p-12 bg-[#EFF6F8]">
+         <div className="w-full max-w-md">
+           <div className="lg:hidden flex items-center gap-2.5 mb-8">
+-            <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center"><GraduationCap className="h-5 w-5 text-white" /></div>
+-            <span className="font-head font-bold text-lg text-[#0A1128]">Binara LMS</span>
++            <div className="h-9 w-9 rounded-xl bg-[#0E7490] flex items-center justify-center"><SiteLogoIcon><GraduationCap className="h-5 w-5 text-white" /></SiteLogoIcon></div>
++            <span className="font-head font-bold text-lg text-[#0A1128]"><SiteName /></span>
+           </div>
+           <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1128]">Masuk ke akun Anda</h1>
+           <p className="mt-2 text-sm text-[#475569]">Belum punya akun siswa? <Link to="/register" className="text-[#0E7490] font-semibold hover:underline">Daftar di sini</Link> · <Link to="/register/proktor" className="text-[#10B981] font-semibold hover:underline" data-testid="login-link-proctor">Daftar Proktor</Link> · <Link to="/register/tentor" className="text-[#C9A227] font-semibold hover:underline" data-testid="login-link-tutor">Daftar Tentor</Link></p>
