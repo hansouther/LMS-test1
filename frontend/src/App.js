@@ -122,7 +122,7 @@ function AppRoutes() {
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/analysis" element={<AdminAnalysis />} />
           <Route path="/admin/payments" element={<ManagePayments />} />
-          <Route path="/admin/settings" element={<SiteSettings />} />
+          <Route path="/admin/site-settings" element={<SiteSettings />} />
         </Route>
       </Route>
 
