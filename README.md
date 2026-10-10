@@ -1,0 +1,11 @@
+# Binara LMS
+
+Platform Learning Management System (LMS) berbasis RBAC dengan 5 portal: Publik, Siswa, Admin, Tentor, Proktor.
+Stack: **React** (frontend) · **FastAPI** (backend `/api`) · **MongoDB**.
+
+## 📚 Dokumentasi
+- **[README_DEPLOY.md](./README_DEPLOY.md)** — 🚀 **Panduan deploy hemat untuk pemula** (server Indonesia, kuat 1.000 user serentak, lengkap dengan harga & rekomendasi hosting). **Mulai dari sini.**
+- [README_DCLOUD.md](./README_DCLOUD.md) — Deploy khusus DCloud + detail pembayaran Midtrans.
+- [DEPLOYMENT_MANDIRI.md](./DEPLOYMENT_MANDIRI.md) — Skala sangat besar (10.000 serentak, multi-server).
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — Arsitektur sistem, skema DB (ERD), alur data, keamanan.
+- `deploy/dcloud/` — File konfigurasi siap pakai (Docker Compose, Nginx, env example, backup, load test).
