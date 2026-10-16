@@ -10,6 +10,7 @@ export default function ProtectedRoute({ roles }) {
   if (user === false) return <Navigate to="/login" state={{ from: location }} replace />;
   if (user.role !== "admin" && user.status && user.status !== "approved") return <Navigate to="/pending" replace />;
   if (needsBiodata(user)) return <Navigate to="/lengkapi-biodata" replace />;
+  if (user.needs_class && location.pathname !== "/profile") return <Navigate to="/profile" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to={roleHome(user.role)} replace />;
   return <Outlet />;
 }

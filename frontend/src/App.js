@@ -38,6 +38,7 @@ import TryoutMonitor from "@/pages/admin/TryoutMonitor";
 import ManageBroadcast from "@/pages/admin/ManageBroadcast";
 import ManagePartnerships from "@/pages/admin/ManagePartnerships";
 import SiteSettings from "@/pages/admin/SiteSettings";
+import AdminChat from "@/pages/admin/AdminChat";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import CourseContent from "@/pages/admin/CourseContent";
 import AdminAnalysis from "@/pages/admin/Analysis";
@@ -123,6 +124,7 @@ function AppRoutes() {
           <Route path="/admin/analysis" element={<AdminAnalysis />} />
           <Route path="/admin/payments" element={<ManagePayments />} />
           <Route path="/admin/site-settings" element={<SiteSettings />} />
+          <Route path="/admin/chat" element={<AdminChat />} />
         </Route>
       </Route>
 

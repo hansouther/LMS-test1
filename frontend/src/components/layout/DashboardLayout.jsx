@@ -5,7 +5,8 @@ import {
   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
   Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2, Wallet,
 } from "lucide-react";
-import { Settings2 } from "lucide-react";
+import { Settings2, MessageCircle } from "lucide-react";
+import StudentChatWidget from "@/components/chat/StudentChatWidget";
 import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
 import { useAuth, roleLabel } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -27,6 +28,7 @@ const NAV = {
     { to: "/admin/payments", label: "Pembayaran", icon: Wallet },
     { to: "/admin/broadcasts", label: "Broadcast Proktor", icon: Radio },
     { to: "/admin/partnerships", label: "Kemitraan", icon: Handshake },
+    { to: "/admin/chat", label: "Chat Siswa", icon: MessageCircle, badge: "chat" },
     { to: "/admin/users", label: "Pengguna & Sekolah", icon: Users },
     { to: "/admin/site-settings", label: "Pengaturan Website", icon: Settings2 },
   ],
@@ -56,7 +58,20 @@ const NAV = {
   ],
 };
 
-function SidebarContent({ items, onNavigate }) {
+function useAdminChatUnread(enabled) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const load = () => api.get("/admin/chat/unread").then((r) => setCount(r.data.count || 0)).catch(() => {});
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 15000);
+    window.addEventListener("admin-chat-read", load);
+    return () => { clearInterval(t); window.removeEventListener("admin-chat-read", load); };
+  }, [enabled]);
+  return count;
+}
+
+function SidebarContent({ items, onNavigate, badges = {} }) {
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {items.map((item) => (
@@ -76,6 +91,9 @@ function SidebarContent({ items, onNavigate }) {
         >
           <item.icon className="h-[18px] w-[18px] shrink-0" />
           <span className="truncate">{item.label}</span>
+          {item.badge && badges[item.badge] > 0 && (
+            <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid={`nav-badge-${item.badge}`}>{badges[item.badge] > 99 ? "99+" : badges[item.badge]}</span>
+          )}
         </NavLink>
       ))}
     </nav>
@@ -163,6 +181,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const items = NAV[user?.role] || [];
+  const badges = { chat: useAdminChatUnread(user?.role === "admin") };
 
   const handleLogout = async () => {
     await logout();
@@ -181,7 +200,7 @@ export default function DashboardLayout() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-white border-r border-[#E2E8F0] flex-col fixed inset-y-0 z-30">
         <Brand />
-        <SidebarContent items={items} />
+        <SidebarContent items={items} badges={badges} />
         <div className="p-3 border-t border-[#E2E8F0] space-y-1">
           <NavLink to="/profile" data-testid="nav-profile" className={({ isActive }) => `w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${isActive ? "bg-[#E6F5F8] text-[#0E7490]" : "text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"}`}>
             <UserCog className="h-[18px] w-[18px]" /> Profil Saya
@@ -213,7 +232,7 @@ export default function DashboardLayout() {
                   <SheetDescription className="sr-only">Tautan cepat menu utama LMS</SheetDescription>
                 {/* Konten asli tautan menu sidebar Anda tetap di bawah sini... */}
                 <Brand />
-                <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} />
+                <SidebarContent items={items} badges={badges} onNavigate={() => setMobileOpen(false)} />
                 <div className="p-3 border-t border-[#E2E8F0] space-y-1">
                   <NavLink to="/profile" onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]">
                     <UserCog className="h-[18px] w-[18px]" /> Profil Saya
@@ -252,9 +271,10 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
+        <main className={`p-4 sm:p-6 lg:p-8 max-w-[1400px] ${user?.role === "student" ? "pb-24 sm:pb-24" : ""}`}>
           <Outlet />
         </main>
+        {user?.role === "student" && <StudentChatWidget />}
       </div>
     </div>
   );

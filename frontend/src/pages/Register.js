@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import ClassPicker from "@/components/common/ClassPicker";
 
 export default function Register() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", school_id: "", grade: "", goal: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", school_id: "", grade: "", level: "", class_id: "", goal: "" });
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
@@ -75,25 +76,20 @@ export default function Register() {
               <Label className="text-[#0A1128]">Nama Lengkap</Label>
               <Input required value={form.name} onChange={set("name")} placeholder="Nama Anda" className="mt-1.5 h-11" data-testid="register-name" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-[#0A1128]">Kelas</Label>
-                <Input required value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="register-grade" />
-              </div>
-              <div>
-                <Label className="text-[#0A1128]">No. WhatsApp</Label>
-                <Input required value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="register-phone" />
-              </div>
+            <div>
+              <Label className="text-[#0A1128]">No. WhatsApp</Label>
+              <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="register-phone" />
             </div>
             <div>
               <Label className="text-[#0A1128]">Asal Sekolah</Label>
-              <Select value={form.school_id} onValueChange={set("school_id")}>
+              <Select value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
                 <SelectTrigger className="mt-1.5 h-11" data-testid="register-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
                 <SelectContent>
                   {schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="register-class" />
             <div>
               <Label className="text-[#0A1128]">Email</Label>
               <Input required type="email" value={form.email} onChange={set("email")} placeholder="nama@email.com" className="mt-1.5 h-11" data-testid="register-email" />

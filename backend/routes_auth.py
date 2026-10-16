@@ -15,6 +15,7 @@ from security import (
 )
 from storage import put_object, MIME_TYPES, APP_NAME
 import jwt
+from routes_school_classes import annotate, resolve_class
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -30,6 +31,8 @@ class RegisterBody(BaseModel):
     phone: str | None = None
     school_id: str | None = None
     grade: str | None = None
+    level: str | None = None
+    class_id: str | None = None
     goal: str | None = None
 
 
@@ -74,6 +77,7 @@ async def register(body: RegisterBody, response: Response):
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    cls = await resolve_class(body.school_id, body.class_id, body.grade, body.level)
     user = {
         "id": new_id(),
         "email": email,
@@ -88,10 +92,11 @@ async def register(body: RegisterBody, response: Response):
         "picture": None,
         "auth_provider": "password",
         "created_at": now_iso(),
+        **cls,
     }
     await db.users.insert_one(user)
     tokens = await _issue_session(user, response)
-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
+    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
 
 
 @router.post("/register/proctor")
@@ -203,7 +208,7 @@ async def login(body: LoginBody, request: Request, response: Response):
 
     await db.login_attempts.delete_one({"identifier": identifier})
     tokens = await _issue_session(user, response)
-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
+    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
 
 
 @router.post("/google/session")
@@ -251,7 +256,7 @@ async def google_session(body: GoogleBody, response: Response):
             user["picture"] = picture
             
     tokens = await _issue_session(user, response)
-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
+    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
 
 
 @router.post("/refresh")
@@ -282,13 +287,15 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 
 @router.get("/me")
 async def me(user: dict = Depends(get_current_user)):
-    return user
+    return await annotate(user)
 
 
 class ProfileBody(BaseModel):
     name: str | None = None
     phone: str | None = None
     grade: str | None = None
+    level: str | None = None
+    class_id: str | None = None
     goal: str | None = None
     school_id: str | None = None
     school_name_text: str | None = None
@@ -322,12 +329,13 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
     if body.phone is not None:
         updates["phone"] = body.phone
     if user["role"] == "student":
-        if body.grade is not None:
-            updates["grade"] = body.grade
         if body.goal is not None:
             updates["goal"] = body.goal
         if body.school_id is not None:
             updates["school_id"] = body.school_id or None
+        if body.grade is not None or body.class_id is not None or body.school_id is not None:
+            sid = updates["school_id"] if "school_id" in updates else user.get("school_id")
+            updates.update(await resolve_class(sid, body.class_id, body.grade, body.level))
     if user["role"] == "proctor" and body.school_name_text is not None:
         updates["school_name_text"] = body.school_name_text
     if user["role"] == "tutor":
@@ -342,7 +350,7 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
         raise HTTPException(status_code=400, detail="Tidak ada perubahan")
     await db.users.update_one({"id": user["id"]}, {"$set": updates})
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
-    return updated
+    return await annotate(updated)
 
 
 @router.post("/change-password")

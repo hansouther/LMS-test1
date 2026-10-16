@@ -1,0 +1,1269 @@
+diff --git a/backend/routes_auth.py b/backend/routes_auth.py
+index 3156f36..6617148 100644
+--- a/backend/routes_auth.py
++++ b/backend/routes_auth.py
+@@ -15,6 +15,7 @@ from security import (
+ )
+ from storage import put_object, MIME_TYPES, APP_NAME
+ import jwt
++from routes_school_classes import annotate, resolve_class
+ 
+ router = APIRouter(prefix="/api/auth", tags=["auth"])
+ 
+@@ -30,6 +31,8 @@ class RegisterBody(BaseModel):
+     phone: str | None = None
+     school_id: str | None = None
+     grade: str | None = None
++    level: str | None = None
++    class_id: str | None = None
+     goal: str | None = None
+ 
+ 
+@@ -74,6 +77,7 @@ async def register(body: RegisterBody, response: Response):
+     email = body.email.lower()
+     if await db.users.find_one({"email": email}):
+         raise HTTPException(status_code=400, detail="Email sudah terdaftar")
++    cls = await resolve_class(body.school_id, body.class_id, body.grade, body.level)
+     user = {
+         "id": new_id(),
+         "email": email,
+@@ -88,10 +92,11 @@ async def register(body: RegisterBody, response: Response):
+         "picture": None,
+         "auth_provider": "password",
+         "created_at": now_iso(),
++        **cls,
+     }
+     await db.users.insert_one(user)
+     tokens = await _issue_session(user, response)
+-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
++    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
+ 
+ 
+ @router.post("/register/proctor")
+@@ -203,7 +208,7 @@ async def login(body: LoginBody, request: Request, response: Response):
+ 
+     await db.login_attempts.delete_one({"identifier": identifier})
+     tokens = await _issue_session(user, response)
+-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
++    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
+ 
+ 
+ @router.post("/google/session")
+@@ -251,7 +256,7 @@ async def google_session(body: GoogleBody, response: Response):
+             user["picture"] = picture
+             
+     tokens = await _issue_session(user, response)
+-    return {**_public_user({k: v for k, v in user.items() if k != "_id"}), **tokens}
++    return {**_public_user(await annotate({k: v for k, v in user.items() if k != "_id"})), **tokens}
+ 
+ 
+ @router.post("/refresh")
+@@ -282,13 +287,15 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
+ 
+ @router.get("/me")
+ async def me(user: dict = Depends(get_current_user)):
+-    return user
++    return await annotate(user)
+ 
+ 
+ class ProfileBody(BaseModel):
+     name: str | None = None
+     phone: str | None = None
+     grade: str | None = None
++    level: str | None = None
++    class_id: str | None = None
+     goal: str | None = None
+     school_id: str | None = None
+     school_name_text: str | None = None
+@@ -322,12 +329,13 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
+     if body.phone is not None:
+         updates["phone"] = body.phone
+     if user["role"] == "student":
+-        if body.grade is not None:
+-            updates["grade"] = body.grade
+         if body.goal is not None:
+             updates["goal"] = body.goal
+         if body.school_id is not None:
+             updates["school_id"] = body.school_id or None
++        if body.grade is not None or body.class_id is not None or body.school_id is not None:
++            sid = updates["school_id"] if "school_id" in updates else user.get("school_id")
++            updates.update(await resolve_class(sid, body.class_id, body.grade, body.level))
+     if user["role"] == "proctor" and body.school_name_text is not None:
+         updates["school_name_text"] = body.school_name_text
+     if user["role"] == "tutor":
+@@ -342,7 +350,7 @@ async def update_profile(body: ProfileBody, user: dict = Depends(get_current_use
+         raise HTTPException(status_code=400, detail="Tidak ada perubahan")
+     await db.users.update_one({"id": user["id"]}, {"$set": updates})
+     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+-    return updated
++    return await annotate(updated)
+ 
+ 
+ @router.post("/change-password")
+diff --git a/backend/routes_chat.py b/backend/routes_chat.py
+new file mode 100644
+index 0000000..3b67a3a
+--- /dev/null
++++ b/backend/routes_chat.py
+@@ -0,0 +1,136 @@
++import uuid
++import asyncio
++from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
++from pydantic import BaseModel
++from typing import Optional
++
++from database import db
++from utils import new_id, now_iso
++from security import require_roles
++from storage import put_object, APP_NAME
++
++router = APIRouter(prefix="/api", tags=["chat"])
++student_only = require_roles("student")
++admin_only = require_roles("admin")
++chat_user = require_roles("student", "admin")
++
++IMG_EXT = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
++MAX_TEXT = 2000
++
++
++class MessageBody(BaseModel):
++    text: Optional[str] = ""
++    image_url: Optional[str] = None
++
++
++def _clean(body: MessageBody):
++    text = (body.text or "").strip()[:MAX_TEXT]
++    img = body.image_url if body.image_url and body.image_url.startswith("/api/files/") else None
++    if not text and not img:
++        raise HTTPException(status_code=400, detail="Pesan kosong")
++    return text, img
++
++
++async def _messages(student_id: str, after: Optional[str]):
++    q = {"thread_id": student_id}
++    if after:
++        q["created_at"] = {"$gt": after}
++    items = await db.chat_messages.find(q, {"_id": 0}).sort("created_at", -1).to_list(200)
++    return items[::-1]
++
++
++async def _post(student_id: str, sender: dict, text: str, img: Optional[str]) -> dict:
++    msg = {"id": new_id(), "thread_id": student_id, "sender_id": sender["id"], "sender_role": sender["role"],
++           "sender_name": sender.get("name"), "text": text, "image_url": img, "created_at": now_iso()}
++    await db.chat_messages.insert_one(msg)
++    inc = "unread_admin" if sender["role"] == "student" else "unread_student"
++    await db.chat_threads.update_one(
++        {"id": student_id},
++        {"$set": {"id": student_id, "student_id": student_id, "last_text": text or "[Gambar]",
++                  "last_role": sender["role"], "last_at": msg["created_at"]}, "$inc": {inc: 1}},
++        upsert=True,
++    )
++    msg.pop("_id", None)
++    return msg
++
++
++@router.post("/chat/upload")
++async def chat_upload(file: UploadFile = File(...), user: dict = Depends(chat_user)):
++    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
++    if ext not in IMG_EXT:
++        raise HTTPException(status_code=400, detail="Format gambar harus PNG, JPG, atau WEBP")
++    data = await file.read()
++    if len(data) > 5 * 1024 * 1024:
++        raise HTTPException(status_code=400, detail="Ukuran gambar maksimal 5 MB")
++    path = f"{APP_NAME}/chat/{user['id']}/{uuid.uuid4().hex}.{ext}"
++    try:
++        result = await asyncio.to_thread(put_object, path, data, IMG_EXT[ext])
++    except Exception as e:
++        raise HTTPException(status_code=502, detail=f"Gagal mengunggah gambar: {e}")
++    await db.files.insert_one({
++        "id": uuid.uuid4().hex, "storage_path": result["path"], "original_filename": file.filename,
++        "content_type": IMG_EXT[ext], "size": len(data), "uploaded_by": user["id"],
++        "is_deleted": False, "created_at": now_iso(),
++    })
++    return {"url": f"/api/files/{result['path']}"}
++
++
++# ----- Siswa -----
++@router.get("/chat/messages")
++async def my_messages(after: Optional[str] = None, user: dict = Depends(student_only)):
++    return await _messages(user["id"], after)
++
++
++@router.post("/chat/messages")
++async def send_my_message(body: MessageBody, user: dict = Depends(student_only)):
++    text, img = _clean(body)
++    return await _post(user["id"], user, text, img)
++
++
++@router.get("/chat/unread")
++async def my_unread(user: dict = Depends(student_only)):
++    t = await db.chat_threads.find_one({"id": user["id"]}, {"_id": 0, "unread_student": 1})
++    return {"count": (t or {}).get("unread_student", 0)}
++
++
++@router.post("/chat/read")
++async def my_read(user: dict = Depends(student_only)):
++    await db.chat_threads.update_one({"id": user["id"]}, {"$set": {"unread_student": 0}})
++    return {"ok": True}
++
++
++# ----- Admin -----
++@router.get("/admin/chat/unread")
++async def admin_unread(user: dict = Depends(admin_only)):
++    rows = await db.chat_threads.aggregate([{"$group": {"_id": None, "n": {"$sum": "$unread_admin"}}}]).to_list(1)
++    return {"count": rows[0]["n"] if rows else 0}
++
++
++@router.get("/admin/chat/threads")
++async def admin_threads(user: dict = Depends(admin_only)):
++    threads = await db.chat_threads.find({}, {"_id": 0}).sort("last_at", -1).to_list(500)
++    sids = [t["student_id"] for t in threads]
++    users = await db.users.find({"id": {"$in": sids}}, {"_id": 0, "id": 1, "name": 1, "email": 1, "grade": 1, "school_id": 1, "picture": 1}).to_list(500)
++    umap = {u["id"]: u for u in users}
++    smap = {s["id"]: s["name"] for s in await db.schools.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)}
++    out = []
++    for t in threads:
++        u = umap.get(t["student_id"]) or {}
++        out.append({**t, "student_name": u.get("name") or "(akun dihapus)", "student_email": u.get("email"),
++                    "grade": u.get("grade"), "school_name": smap.get(u.get("school_id")), "picture": u.get("picture"),
++                    "unread_admin": t.get("unread_admin", 0)})
++    return out
++
++
++@router.get("/admin/chat/threads/{student_id}/messages")
++async def admin_thread_messages(student_id: str, after: Optional[str] = None, user: dict = Depends(admin_only)):
++    await db.chat_threads.update_one({"id": student_id}, {"$set": {"unread_admin": 0}})
++    return await _messages(student_id, after)
++
++
++@router.post("/admin/chat/threads/{student_id}/messages")
++async def admin_send(student_id: str, body: MessageBody, user: dict = Depends(admin_only)):
++    if not await db.users.find_one({"id": student_id, "role": "student"}, {"_id": 1}):
++        raise HTTPException(status_code=404, detail="Siswa tidak ditemukan")
++    text, img = _clean(body)
++    return await _post(student_id, user, text, img)
+diff --git a/backend/routes_school_classes.py b/backend/routes_school_classes.py
+new file mode 100644
+index 0000000..ced7475
+--- /dev/null
++++ b/backend/routes_school_classes.py
+@@ -0,0 +1,152 @@
++import re
++from fastapi import APIRouter, HTTPException, Depends
++from fastapi.responses import Response
++from pydantic import BaseModel
++from typing import List, Optional
++
++from database import db
++from utils import new_id, now_iso
++from security import require_roles
++import analysis
++
++router = APIRouter(prefix="/api", tags=["school-classes"])
++admin_only = require_roles("admin")
++
++LEVELS = {"SD": "SD / Sederajat", "SMP": "SMP / Sederajat", "SMA": "SMA / Sederajat"}
++LEVEL_ORDER = {"SD": 0, "SMP": 1, "SMA": 2}
++
++
++def _norm(s: str) -> str:
++    return re.sub(r"\s+", " ", (s or "").strip()).upper()
++
++
++def _sort_key(c):
++    parts = re.split(r"(\d+)", c["label"])
++    return (LEVEL_ORDER.get(c["level"], 9), [int(p) if p.isdigit() else p for p in parts])
++
++
++async def classes_of(school_id: str) -> list:
++    items = await db.school_classes.find({"school_id": school_id}, {"_id": 0}).to_list(500)
++    return sorted(items, key=_sort_key)
++
++
++async def annotate(user: dict) -> dict:
++    """Tandai siswa yang kelasnya belum sesuai daftar kelas resmi sekolahnya."""
++    if not user or user.get("role") != "student":
++        return user
++    need = False
++    sid = user.get("school_id")
++    if sid and await db.school_classes.count_documents({"school_id": sid}):
++        cid = user.get("class_id")
++        need = not cid or not await db.school_classes.find_one({"id": cid, "school_id": sid}, {"_id": 1})
++    user["needs_class"] = need
++    return user
++
++
++async def resolve_class(school_id: Optional[str], class_id: Optional[str], grade: Optional[str], level: Optional[str]) -> dict:
++    """Validasi pilihan kelas siswa -> field yang disimpan (grade = label kelas resmi)."""
++    if class_id:
++        c = await db.school_classes.find_one({"id": class_id}, {"_id": 0})
++        if not c or (school_id and c["school_id"] != school_id):
++            raise HTTPException(status_code=400, detail="Kelas tidak ditemukan untuk sekolah ini")
++        return {"class_id": c["id"], "grade": c["label"], "level": c["level"]}
++    if school_id and await db.school_classes.count_documents({"school_id": school_id}):
++        raise HTTPException(status_code=400, detail="Pilih jenjang dan kelas dari daftar yang ditentukan admin")
++    out = {"class_id": None}
++    if grade is not None:
++        out["grade"] = grade.strip()
++    if level in LEVELS:
++        out["level"] = level
++    return out
++
++
++@router.get("/public/schools/{school_id}/classes")
++async def public_classes(school_id: str):
++    return [{"id": c["id"], "level": c["level"], "label": c["label"]} for c in await classes_of(school_id)]
++
++
++@router.get("/admin/schools/{school_id}/classes")
++async def admin_classes(school_id: str, user: dict = Depends(admin_only)):
++    items = await classes_of(school_id)
++    for c in items:
++        c["student_count"] = await db.users.count_documents({"role": "student", "class_id": c["id"]})
++    mismatch = 0
++    if items:
++        ids = [c["id"] for c in items]
++        mismatch = await db.users.count_documents({"role": "student", "school_id": school_id, "class_id": {"$nin": ids}})
++    return {"items": items, "mismatch": mismatch}
++
++
++class ClassBulkBody(BaseModel):
++    level: str
++    labels: List[str]
++
++
++@router.post("/admin/schools/{school_id}/classes")
++async def create_classes(school_id: str, body: ClassBulkBody, user: dict = Depends(admin_only)):
++    if body.level not in LEVELS:
++        raise HTTPException(status_code=400, detail="Jenjang tidak valid")
++    if not await db.schools.find_one({"id": school_id}, {"_id": 1}):
++        raise HTTPException(status_code=404, detail="Sekolah tidak ditemukan")
++    existing = {_norm(c["label"]) for c in await classes_of(school_id)}
++    docs = []
++    for raw in body.labels[:100]:
++        label = _norm(raw)
++        if not label or label in existing:
++            continue
++        existing.add(label)
++        docs.append({"id": new_id(), "school_id": school_id, "level": body.level, "label": label, "created_at": now_iso()})
++    if docs:
++        await db.school_classes.insert_many(docs)
++    return {"created": len(docs), "skipped": len(body.labels) - len(docs)}
++
++
++class ClassUpdateBody(BaseModel):
++    label: str
++    level: str
++
++
++@router.put("/admin/school-classes/{class_id}")
++async def update_class(class_id: str, body: ClassUpdateBody, user: dict = Depends(admin_only)):
++    c = await db.school_classes.find_one({"id": class_id}, {"_id": 0})
++    if not c:
++        raise HTTPException(status_code=404, detail="Kelas tidak ditemukan")
++    label = _norm(body.label)
++    if not label or body.level not in LEVELS:
++        raise HTTPException(status_code=400, detail="Nama kelas / jenjang tidak valid")
++    dup = await db.school_classes.find_one({"school_id": c["school_id"], "label": label, "id": {"$ne": class_id}}, {"_id": 1})
++    if dup:
++        raise HTTPException(status_code=400, detail="Nama kelas sudah ada di sekolah ini")
++    await db.school_classes.update_one({"id": class_id}, {"$set": {"label": label, "level": body.level}})
++    await db.users.update_many({"class_id": class_id}, {"$set": {"grade": label, "level": body.level}})
++    return {"ok": True}
++
++
++@router.delete("/admin/school-classes/{class_id}")
++async def delete_class(class_id: str, user: dict = Depends(admin_only)):
++    await db.school_classes.delete_one({"id": class_id})
++    return {"ok": True}
++
++
++async def _class_or_404(class_id: str) -> dict:
++    c = await db.school_classes.find_one({"id": class_id}, {"_id": 0})
++    if not c:
++        raise HTTPException(status_code=404, detail="Kelas tidak ditemukan")
++    return c
++
++
++@router.get("/admin/school-classes/{class_id}/students")
++async def class_students(class_id: str, user: dict = Depends(admin_only)):
++    await _class_or_404(class_id)
++    return await db.users.find({"role": "student", "class_id": class_id},
++                               {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1}).sort("name", 1).to_list(1000)
++
++
++@router.get("/admin/school-classes/{class_id}/scores.csv")
++async def class_scores_csv(class_id: str, user: dict = Depends(admin_only)):
++    c = await _class_or_404(class_id)
++    ids = [u["id"] for u in await db.users.find({"role": "student", "class_id": class_id}, {"_id": 0, "id": 1}).to_list(1000)]
++    rep = await analysis.build_report(ids)
++    name = re.sub(r"[^A-Za-z0-9_-]+", "_", c["label"])
++    return Response(content=analysis.scores_csv(rep), media_type="text/csv",
++                    headers={"Content-Disposition": f"attachment; filename=nilai_kelas_{name}.csv"})
+diff --git a/backend/server.py b/backend/server.py
+index 10661d9..3221f82 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -15,6 +15,7 @@ from seed import seed, seed_content, migrate_analysis
+ import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes, routes_payments
+ import routes_site
+ import routes_r2
++import routes_school_classes, routes_chat
+ 
+ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ logger = logging.getLogger(__name__)
+@@ -55,6 +56,8 @@ app.include_router(routes_files.router)
+ app.include_router(routes_classes.router)
+ app.include_router(routes_payments.router)
+ app.include_router(routes_site.router)
++app.include_router(routes_school_classes.router)
++app.include_router(routes_chat.router)
+ 
+ @app.get("/api/")
+ async def root():
+@@ -74,6 +77,10 @@ async def startup():
+     await db.payments.create_index("order_id", unique=True)
+     await db.payments.create_index([("student_id", 1), ("item_type", 1), ("item_id", 1)])
+     await db.tryout_access.create_index([("student_id", 1), ("tryout_id", 1)], unique=True)
++    await db.school_classes.create_index([("school_id", 1), ("label", 1)])
++    await db.school_classes.create_index("id", unique=True)
++    await db.chat_messages.create_index([("thread_id", 1), ("created_at", -1)])
++    await db.chat_threads.create_index("last_at")
+     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
+     await seed_content()
+     await migrate_analysis()
+diff --git a/frontend/src/App.js b/frontend/src/App.js
+index ef11884..278059c 100644
+--- a/frontend/src/App.js
++++ b/frontend/src/App.js
+@@ -38,6 +38,7 @@ import TryoutMonitor from "@/pages/admin/TryoutMonitor";
+ import ManageBroadcast from "@/pages/admin/ManageBroadcast";
+ import ManagePartnerships from "@/pages/admin/ManagePartnerships";
+ import SiteSettings from "@/pages/admin/SiteSettings";
++import AdminChat from "@/pages/admin/AdminChat";
+ import ManageUsers from "@/pages/admin/ManageUsers";
+ import CourseContent from "@/pages/admin/CourseContent";
+ import AdminAnalysis from "@/pages/admin/Analysis";
+@@ -123,6 +124,7 @@ function AppRoutes() {
+           <Route path="/admin/analysis" element={<AdminAnalysis />} />
+           <Route path="/admin/payments" element={<ManagePayments />} />
+           <Route path="/admin/site-settings" element={<SiteSettings />} />
++          <Route path="/admin/chat" element={<AdminChat />} />
+         </Route>
+       </Route>
+ 
+diff --git a/frontend/src/components/ProtectedRoute.jsx b/frontend/src/components/ProtectedRoute.jsx
+index b5281ac..226e050 100644
+--- a/frontend/src/components/ProtectedRoute.jsx
++++ b/frontend/src/components/ProtectedRoute.jsx
+@@ -10,6 +10,7 @@ export default function ProtectedRoute({ roles }) {
+   if (user === false) return <Navigate to="/login" state={{ from: location }} replace />;
+   if (user.role !== "admin" && user.status && user.status !== "approved") return <Navigate to="/pending" replace />;
+   if (needsBiodata(user)) return <Navigate to="/lengkapi-biodata" replace />;
++  if (user.needs_class && location.pathname !== "/profile") return <Navigate to="/profile" replace />;
+   if (roles && !roles.includes(user.role)) return <Navigate to={roleHome(user.role)} replace />;
+   return <Outlet />;
+ }
+diff --git a/frontend/src/components/admin/SchoolClassesDialog.jsx b/frontend/src/components/admin/SchoolClassesDialog.jsx
+new file mode 100644
+index 0000000..38ca246
+--- /dev/null
++++ b/frontend/src/components/admin/SchoolClassesDialog.jsx
+@@ -0,0 +1,142 @@
++import { useEffect, useState } from "react";
++import { Loader2, Plus, Trash2, Download, Pencil, Check, X, Users, AlertTriangle } from "lucide-react";
++import api, { apiError } from "@/lib/api";
++import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
++import { Button } from "@/components/ui/button";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { LEVELS } from "@/components/common/ClassPicker";
++import { toast } from "sonner";
++import ConfirmButton from "@/components/common/ConfirmButton";
++
++function GenerateForm({ schoolId, onDone }) {
++  const [f, setF] = useState({ level: "SMA", prefix: "XII", from: 1, to: 10, manual: "" });
++  const [busy, setBusy] = useState(false);
++  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e?.target ? e.target.value : e }));
++  const from = Number(f.from), to = Number(f.to);
++  const generated = f.prefix.trim() && from >= 1 && to >= from && to - from < 50
++    ? Array.from({ length: to - from + 1 }, (_, i) => `${f.prefix.trim()}-${from + i}`) : [];
++  const manual = f.manual.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
++  const labels = manual.length ? manual : generated;
++
++  const submit = async () => {
++    if (!labels.length) return toast.error("Isi nama kelas terlebih dahulu");
++    setBusy(true);
++    try {
++      const { data } = await api.post(`/admin/schools/${schoolId}/classes`, { level: f.level, labels });
++      toast.success(`${data.created} kelas ditambahkan${data.skipped ? `, ${data.skipped} dilewati (sudah ada)` : ""}`);
++      setF((s) => ({ ...s, manual: "" }));
++      onDone();
++    } catch (e) { toast.error(apiError(e)); } finally { setBusy(false); }
++  };
++
++  return (
++    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-3" data-testid="class-generate-form">
++      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
++        <div className="col-span-2 sm:col-span-1 min-w-0">
++          <Label className="text-xs">Jenjang</Label>
++          <Select value={f.level} onValueChange={set("level")}>
++            <SelectTrigger className="mt-1 h-10" data-testid="gen-level"><SelectValue /></SelectTrigger>
++            <SelectContent>{LEVELS.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}</SelectContent>
++          </Select>
++        </div>
++        <div className="col-span-2 sm:col-span-1"><Label className="text-xs">Awalan</Label><Input value={f.prefix} onChange={set("prefix")} placeholder="XII" className="mt-1 h-10" data-testid="gen-prefix" /></div>
++        <div><Label className="text-xs">Dari</Label><Input type="number" min={1} value={f.from} onChange={set("from")} className="mt-1 h-10" data-testid="gen-from" /></div>
++        <div><Label className="text-xs">Sampai</Label><Input type="number" min={1} value={f.to} onChange={set("to")} className="mt-1 h-10" data-testid="gen-to" /></div>
++      </div>
++      <div>
++        <Label className="text-xs">Atau tulis manual (pisahkan dengan koma)</Label>
++        <Input value={f.manual} onChange={set("manual")} placeholder="XII IPA 1, XII IPS 2" className="mt-1 h-10" data-testid="gen-manual" />
++      </div>
++      <div className="flex flex-wrap items-center justify-between gap-2">
++        <p className="text-xs text-[#475569] min-w-0 break-words" data-testid="gen-preview">Akan dibuat: {labels.length ? labels.slice(0, 6).join(", ") + (labels.length > 6 ? ` … (${labels.length} kelas)` : "") : "-"}</p>
++        <Button size="sm" onClick={submit} disabled={busy} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="gen-submit">
++          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Tambah Kelas</>}
++        </Button>
++      </div>
++    </div>
++  );
++}
++
++function ClassRow({ c, onChanged }) {
++  const [edit, setEdit] = useState(null);
++  const save = async () => {
++    try { await api.put(`/admin/school-classes/${c.id}`, edit); toast.success("Kelas diperbarui"); setEdit(null); onChanged(); }
++    catch (e) { toast.error(apiError(e)); }
++  };
++  const remove = async () => {
++    try { await api.delete(`/admin/school-classes/${c.id}`); toast.success("Kelas dihapus"); onChanged(); } catch (e) { toast.error(apiError(e)); }
++  };
++  const download = async () => {
++    try {
++      const res = await api.get(`/admin/school-classes/${c.id}/scores.csv`, { responseType: "blob" });
++      const a = document.createElement("a");
++      a.href = URL.createObjectURL(res.data); a.download = `nilai_kelas_${c.label}.csv`; a.click();
++    } catch (e) { toast.error(apiError(e)); }
++  };
++
++  if (edit) return (
++    <div className="flex flex-wrap items-center gap-2 py-2" data-testid={`class-row-${c.label}`}>
++      <Input value={edit.label} onChange={(e) => setEdit((s) => ({ ...s, label: e.target.value }))} className="h-9 w-32" data-testid="class-edit-label" />
++      <Select value={edit.level} onValueChange={(v) => setEdit((s) => ({ ...s, level: v }))}>
++        <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
++        <SelectContent>{LEVELS.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}</SelectContent>
++      </Select>
++      <Button size="icon" variant="ghost" onClick={save} data-testid="class-edit-save"><Check className="h-4 w-4 text-emerald-600" /></Button>
++      <Button size="icon" variant="ghost" onClick={() => setEdit(null)}><X className="h-4 w-4" /></Button>
++    </div>
++  );
++  return (
++    <div className="flex items-center gap-2 py-2" data-testid={`class-row-${c.label}`}>
++      <span className="font-semibold text-sm text-[#0A1128] min-w-0 truncate">{c.label}</span>
++      <span className="text-xs text-[#94A3B8] flex items-center gap-1 shrink-0"><Users className="h-3 w-3" />{c.student_count}</span>
++      <div className="ml-auto flex shrink-0">
++        <Button size="icon" variant="ghost" title="Unduh nilai kelas (rapor)" onClick={download} data-testid={`class-download-${c.label}`}><Download className="h-4 w-4 text-[#0E7490]" /></Button>
++        <Button size="icon" variant="ghost" title="Ubah" onClick={() => setEdit({ label: c.label, level: c.level })} data-testid={`class-edit-${c.label}`}><Pencil className="h-4 w-4" /></Button>
++        <ConfirmButton title={`Hapus kelas ${c.label}?`} description={`${c.student_count} siswa di kelas ini akan diminta memilih kelas ulang.`} onConfirm={remove}
++          trigger={<Button size="icon" variant="ghost" title="Hapus" data-testid={`class-delete-${c.label}`}><Trash2 className="h-4 w-4 text-red-500" /></Button>} />
++      </div>
++    </div>
++  );
++}
++
++export default function SchoolClassesDialog({ school, onOpenChange }) {
++  const [data, setData] = useState(null);
++  const load = () => school && api.get(`/admin/schools/${school.id}/classes`).then((r) => setData(r.data)).catch((e) => toast.error(apiError(e)));
++  useEffect(() => { setData(null); load(); }, [school?.id]); // eslint-disable-line react-hooks/exhaustive-deps
++
++  return (
++    <Dialog open={!!school} onOpenChange={onOpenChange}>
++      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="school-classes-dialog">
++        <DialogHeader>
++          <DialogTitle>Daftar Kelas — {school?.name}</DialogTitle>
++          <DialogDescription>Siswa hanya bisa memilih kelas dari daftar ini, sehingga nilai Try Out tercatat rapi per kelas.</DialogDescription>
++        </DialogHeader>
++        {school && <GenerateForm schoolId={school.id} onDone={load} />}
++        {!data ? <Loader2 className="h-5 w-5 animate-spin text-[#94A3B8] mx-auto my-6" /> : (
++          <div className="space-y-4">
++            {data.mismatch > 0 && (
++              <p className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900" data-testid="class-mismatch">
++                <AlertTriangle className="h-4 w-4 shrink-0" /> {data.mismatch} siswa belum memilih kelas resmi. Mereka otomatis diarahkan ke halaman Profil untuk memilih ulang saat membuka LMS.
++              </p>
++            )}
++            {data.items.length === 0 && <p className="text-sm text-[#94A3B8] text-center py-4">Belum ada kelas. Siswa sekolah ini masih menulis kelas secara bebas.</p>}
++            {LEVELS.map((l) => {
++              const rows = data.items.filter((c) => c.level === l.id);
++              if (!rows.length) return null;
++              return (
++                <div key={l.id} data-testid={`class-group-${l.id}`}>
++                  <p className="text-xs font-bold uppercase tracking-wider text-[#0E7490] mb-1">{l.label} · {rows.length} kelas</p>
++                  <div className="divide-y divide-[#F1F5F9] rounded-xl border border-[#E2E8F0] px-3">
++                    {rows.map((c) => <ClassRow key={c.id} c={c} onChanged={load} />)}
++                  </div>
++                </div>
++              );
++            })}
++          </div>
++        )}
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/frontend/src/components/chat/ChatParts.jsx b/frontend/src/components/chat/ChatParts.jsx
+new file mode 100644
+index 0000000..99cde0f
+--- /dev/null
++++ b/frontend/src/components/chat/ChatParts.jsx
+@@ -0,0 +1,106 @@
++import { useEffect, useRef, useState } from "react";
++import { ImagePlus, Loader2, Send, X } from "lucide-react";
++import api, { apiError } from "@/lib/api";
++import { fileUrl } from "@/lib/media";
++import { toast } from "sonner";
++
++const time = (iso) => new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
++
++export function MessageList({ messages, mine, emptyText }) {
++  const end = useRef(null);
++  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [messages.length]);
++  return (
++    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-2 bg-[#F4F8FA]" data-testid="chat-messages">
++      {messages.length === 0 && <p className="text-center text-sm text-[#94A3B8] py-10 px-4">{emptyText}</p>}
++      {messages.map((m) => {
++        const own = m.sender_role === mine;
++        return (
++          <div key={m.id} className={`flex ${own ? "justify-end" : "justify-start"}`} data-testid={`chat-msg-${m.id}`}>
++            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "bg-[#0E7490] text-white rounded-br-md" : "bg-white text-[#0A1128] border border-[#E2E8F0] rounded-bl-md"}`}>
++              {!own && m.sender_role === "admin" && <p className="text-[10px] font-bold text-[#0E7490] mb-0.5">Admin</p>}
++              {m.image_url && (
++                <a href={fileUrl(m.image_url)} target="_blank" rel="noreferrer">
++                  <img src={fileUrl(m.image_url)} alt="lampiran" className="rounded-lg max-h-56 w-auto mb-1 bg-white" onLoad={() => end.current?.scrollIntoView({ block: "end" })} data-testid="chat-msg-image" />
++                </a>
++              )}
++              {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
++              <p className={`text-[10px] mt-0.5 text-right ${own ? "text-white/70" : "text-[#94A3B8]"}`}>{time(m.created_at)}</p>
++            </div>
++          </div>
++        );
++      })}
++      <div ref={end} />
++    </div>
++  );
++}
++
++export function Composer({ onSend, testPrefix = "chat" }) {
++  const [text, setText] = useState("");
++  const [img, setImg] = useState(null);
++  const [busy, setBusy] = useState(false);
++  const fileRef = useRef(null);
++
++  const pick = async (e) => {
++    const f = e.target.files?.[0];
++    e.target.value = "";
++    if (!f) return;
++    if (f.size > 5 * 1024 * 1024) return toast.error("Ukuran gambar maksimal 5 MB");
++    setBusy(true);
++    try {
++      const fd = new FormData(); fd.append("file", f);
++      const { data } = await api.post("/chat/upload", fd);
++      setImg(data.url);
++    } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
++  };
++  const send = async (e) => {
++    e.preventDefault();
++    if (busy || (!text.trim() && !img)) return;
++    setBusy(true);
++    try { await onSend({ text: text.trim(), image_url: img }); setText(""); setImg(null); }
++    catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
++  };
++
++  return (
++    <form onSubmit={send} className="border-t border-[#E2E8F0] bg-white p-2 sm:p-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]" data-testid={`${testPrefix}-composer`}>
++      {img && (
++        <div className="relative inline-block mb-2">
++          <img src={fileUrl(img)} alt="pratinjau" className="h-16 rounded-lg border border-[#E2E8F0]" data-testid={`${testPrefix}-image-preview`} />
++          <button type="button" onClick={() => setImg(null)} className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-[#0A1128] text-white flex items-center justify-center" aria-label="Hapus gambar"><X className="h-3 w-3" /></button>
++        </div>
++      )}
++      <div className="flex items-end gap-2">
++        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pick} data-testid={`${testPrefix}-file`} />
++        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="h-10 w-10 shrink-0 rounded-full text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490] flex items-center justify-center transition-colors duration-150" aria-label="Kirim gambar" data-testid={`${testPrefix}-attach`}>
++          <ImagePlus className="h-5 w-5" />
++        </button>
++        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000} placeholder="Tulis pesan..."
++          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(hover: hover)").matches) send(e); }}
++          className="flex-1 min-w-0 resize-none max-h-28 rounded-2xl border border-[#D5DDE3] px-3 py-2 text-sm focus:outline-none focus:border-[#0E7490]" data-testid={`${testPrefix}-input`} />
++        <button type="submit" disabled={busy || (!text.trim() && !img)} className="h-10 w-10 shrink-0 rounded-full bg-[#0E7490] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#0B5C74] transition-colors duration-150" aria-label="Kirim" data-testid={`${testPrefix}-send`}>
++          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
++        </button>
++      </div>
++    </form>
++  );
++}
++
++// Polling pesan baru tiap `interval` ms selama `active`
++export function useChatPolling(url, active, interval = 4000) {
++  const [messages, setMessages] = useState([]);
++  const last = useRef(null);
++  useEffect(() => { setMessages([]); last.current = null; }, [url]);
++  useEffect(() => {
++    if (!active || !url) return;
++    let alive = true;
++    const tick = () => api.get(url, { params: last.current ? { after: last.current } : {} }).then((r) => {
++      if (!alive || !r.data.length) return;
++      last.current = r.data[r.data.length - 1].created_at;
++      setMessages((m) => { const ids = new Set(m.map((x) => x.id)); return [...m, ...r.data.filter((x) => !ids.has(x.id))]; });
++    }).catch(() => {});
++    tick();
++    const t = setInterval(() => { if (!document.hidden) tick(); }, interval);
++    return () => { alive = false; clearInterval(t); };
++  }, [url, active, interval]);
++  const push = (msg) => { last.current = msg.created_at; setMessages((m) => (m.some((x) => x.id === msg.id) ? m : [...m, msg])); };
++  return { messages, push };
++}
+diff --git a/frontend/src/components/chat/StudentChatWidget.jsx b/frontend/src/components/chat/StudentChatWidget.jsx
+new file mode 100644
+index 0000000..d352d04
+--- /dev/null
++++ b/frontend/src/components/chat/StudentChatWidget.jsx
+@@ -0,0 +1,59 @@
++import { useEffect, useState } from "react";
++import { MessageCircle, X, Headset } from "lucide-react";
++import api from "@/lib/api";
++import { MessageList, Composer, useChatPolling } from "@/components/chat/ChatParts";
++
++export default function StudentChatWidget() {
++  const [open, setOpen] = useState(false);
++  const [unread, setUnread] = useState(0);
++  const [typing, setTyping] = useState(false);
++  const { messages, push } = useChatPolling("/chat/messages", open);
++
++  useEffect(() => {
++    const isField = (el) => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el?.getAttribute?.("role") === "combobox";
++    const onIn = (e) => setTyping(isField(e.target) && !e.target.closest("[data-testid=student-chat-panel]"));
++    const onOut = () => setTyping(false);
++    document.addEventListener("focusin", onIn);
++    document.addEventListener("focusout", onOut);
++    return () => { document.removeEventListener("focusin", onIn); document.removeEventListener("focusout", onOut); };
++  }, []);
++
++  useEffect(() => {
++    if (open) return;
++    const load = () => api.get("/chat/unread").then((r) => setUnread(r.data.count || 0)).catch(() => {});
++    load();
++    const t = setInterval(() => { if (!document.hidden) load(); }, 20000);
++    return () => clearInterval(t);
++  }, [open]);
++
++  useEffect(() => {
++    if (open && messages.length) api.post("/chat/read").then(() => setUnread(0)).catch(() => {});
++  }, [open, messages.length]);
++
++  const send = async (body) => { const { data } = await api.post("/chat/messages", body); push(data); };
++
++  return (
++    <>
++      {open && (
++        <div className="fixed z-50 inset-x-0 bottom-0 top-[max(4rem,env(safe-area-inset-top))] sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[380px] sm:h-[560px] sm:max-h-[calc(100vh-8rem)] flex flex-col bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden" data-testid="student-chat-panel">
++          <div className="flex items-center gap-3 px-4 h-14 shrink-0 bg-[#0A1128] text-white">
++            <div className="h-9 w-9 rounded-full bg-[#0E7490] flex items-center justify-center"><Headset className="h-5 w-5" /></div>
++            <div className="min-w-0 flex-1">
++              <p className="font-semibold text-sm leading-tight">Tanya Admin</p>
++              <p className="text-[11px] text-white/60 truncate">Pesan dibalas admin secepatnya</p>
++            </div>
++            <button onClick={() => setOpen(false)} className="p-2 rounded-full hover:bg-white/10" aria-label="Tutup chat" data-testid="student-chat-close"><X className="h-5 w-5" /></button>
++          </div>
++          <MessageList messages={messages} mine="student" emptyText="Ada yang ingin ditanyakan tentang materi atau LMS? Tulis pesan atau kirim foto, admin akan membalas di sini." />
++          <Composer onSend={send} testPrefix="student-chat" />
++        </div>
++      )}
++      <button onClick={() => setOpen((o) => !o)}
++        className={`fixed z-50 right-4 sm:right-6 bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6 h-14 w-14 rounded-full bg-[#0E7490] text-white shadow-lg shadow-[#0E7490]/40 flex items-center justify-center hover:bg-[#0B5C74] hover:scale-105 transition-transform duration-200 ${open ? "hidden sm:flex" : ""} ${typing && !open ? "max-sm:hidden" : ""}`}
++        aria-label="Chat admin" data-testid="student-chat-button">
++        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
++        {!open && unread > 0 && <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#EF4444] text-[11px] font-bold flex items-center justify-center border-2 border-white" data-testid="student-chat-badge">{unread > 99 ? "99+" : unread}</span>}
++      </button>
++    </>
++  );
++}
+diff --git a/frontend/src/components/common/ClassPicker.jsx b/frontend/src/components/common/ClassPicker.jsx
+new file mode 100644
+index 0000000..7897f7b
+--- /dev/null
++++ b/frontend/src/components/common/ClassPicker.jsx
+@@ -0,0 +1,66 @@
++import { useEffect, useState } from "react";
++import api from "@/lib/api";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++
++export const LEVELS = [
++  { id: "SD", label: "SD Sederajat" },
++  { id: "SMP", label: "SMP Sederajat" },
++  { id: "SMA", label: "SMA Sederajat" },
++];
++
++export function useSchoolClasses(schoolId) {
++  const [classes, setClasses] = useState(null);
++  useEffect(() => {
++    if (!schoolId) { setClasses([]); return; }
++    setClasses(null);
++    api.get(`/public/schools/${schoolId}/classes`).then((r) => setClasses(r.data)).catch(() => setClasses([]));
++  }, [schoolId]);
++  return classes;
++}
++
++// value: { level, class_id, grade } — onChange(patch)
++export default function ClassPicker({ schoolId, value, onChange, testPrefix = "class" }) {
++  const classes = useSchoolClasses(schoolId);
++  const official = (classes || []).length > 0;
++  const levels = official ? LEVELS.filter((l) => classes.some((c) => c.level === l.id)) : LEVELS;
++  const options = (classes || []).filter((c) => c.level === value.level);
++
++  useEffect(() => {
++    if (!official || !value.class_id) return;
++    const c = classes.find((x) => x.id === value.class_id);
++    if (!c) onChange({ class_id: "" });
++    else if (c.level !== value.level) onChange({ level: c.level });
++  }, [classes]); // eslint-disable-line react-hooks/exhaustive-deps
++
++  return (
++    <div className="grid grid-cols-2 gap-3 sm:gap-4" data-testid={`${testPrefix}-picker`}>
++      <div className="min-w-0">
++        <Label className="text-[#0A1128]">Jenjang</Label>
++        <Select value={value.level || ""} onValueChange={(v) => onChange({ level: v, class_id: "" })}>
++          <SelectTrigger className="mt-1.5 h-11" data-testid={`${testPrefix}-level`}><SelectValue placeholder="Pilih jenjang" /></SelectTrigger>
++          <SelectContent>
++            {levels.map((l) => <SelectItem key={l.id} value={l.id} data-testid={`${testPrefix}-level-${l.id}`}>{l.label}</SelectItem>)}
++          </SelectContent>
++        </Select>
++      </div>
++      <div className="min-w-0">
++        <Label className="text-[#0A1128]">Kelas</Label>
++        {official ? (
++          <Select key={classes.length} value={value.class_id || ""} onValueChange={(v) => onChange({ class_id: v })} disabled={!value.level}>
++            <SelectTrigger className="mt-1.5 h-11" data-testid={`${testPrefix}-select`}><SelectValue placeholder={value.level ? "Pilih kelas" : "Pilih jenjang dulu"} /></SelectTrigger>
++            <SelectContent className="max-h-72">
++              {options.map((c) => <SelectItem key={c.id} value={c.id} data-testid={`${testPrefix}-opt-${c.label}`}>{c.label}</SelectItem>)}
++            </SelectContent>
++          </Select>
++        ) : (
++          <Input required value={value.grade || ""} onChange={(e) => onChange({ grade: e.target.value })} placeholder={schoolId ? "Contoh: XII-1" : "Pilih sekolah dulu"}
++            disabled={!schoolId} className="mt-1.5 h-11" data-testid={`${testPrefix}-text`} />
++        )}
++      </div>
++      {schoolId && classes && !official && <p className="col-span-2 text-[11px] text-[#94A3B8]">Sekolah ini belum punya daftar kelas resmi. Tulis kelas Anda sesuai data sekolah.</p>}
++    </div>
++  );
++}
++
+diff --git a/frontend/src/components/layout/DashboardLayout.jsx b/frontend/src/components/layout/DashboardLayout.jsx
+index 469af4d..78ce2b5 100644
+--- a/frontend/src/components/layout/DashboardLayout.jsx
++++ b/frontend/src/components/layout/DashboardLayout.jsx
+@@ -5,7 +5,8 @@ import {
+   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
+   Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2, Wallet,
+ } from "lucide-react";
+-import { Settings2 } from "lucide-react";
++import { Settings2, MessageCircle } from "lucide-react";
++import StudentChatWidget from "@/components/chat/StudentChatWidget";
+ import { SiteLogoIcon, SiteName } from "@/components/common/SiteBrand";
+ import { useAuth, roleLabel } from "@/context/AuthContext";
+ import api from "@/lib/api";
+@@ -27,6 +28,7 @@ const NAV = {
+     { to: "/admin/payments", label: "Pembayaran", icon: Wallet },
+     { to: "/admin/broadcasts", label: "Broadcast Proktor", icon: Radio },
+     { to: "/admin/partnerships", label: "Kemitraan", icon: Handshake },
++    { to: "/admin/chat", label: "Chat Siswa", icon: MessageCircle, badge: "chat" },
+     { to: "/admin/users", label: "Pengguna & Sekolah", icon: Users },
+     { to: "/admin/site-settings", label: "Pengaturan Website", icon: Settings2 },
+   ],
+@@ -56,7 +58,20 @@ const NAV = {
+   ],
+ };
+ 
+-function SidebarContent({ items, onNavigate }) {
++function useAdminChatUnread(enabled) {
++  const [count, setCount] = useState(0);
++  useEffect(() => {
++    if (!enabled) return;
++    const load = () => api.get("/admin/chat/unread").then((r) => setCount(r.data.count || 0)).catch(() => {});
++    load();
++    const t = setInterval(() => { if (!document.hidden) load(); }, 15000);
++    window.addEventListener("admin-chat-read", load);
++    return () => { clearInterval(t); window.removeEventListener("admin-chat-read", load); };
++  }, [enabled]);
++  return count;
++}
++
++function SidebarContent({ items, onNavigate, badges = {} }) {
+   return (
+     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+       {items.map((item) => (
+@@ -76,6 +91,9 @@ function SidebarContent({ items, onNavigate }) {
+         >
+           <item.icon className="h-[18px] w-[18px] shrink-0" />
+           <span className="truncate">{item.label}</span>
++          {item.badge && badges[item.badge] > 0 && (
++            <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid={`nav-badge-${item.badge}`}>{badges[item.badge] > 99 ? "99+" : badges[item.badge]}</span>
++          )}
+         </NavLink>
+       ))}
+     </nav>
+@@ -163,6 +181,7 @@ export default function DashboardLayout() {
+   const navigate = useNavigate();
+   const [mobileOpen, setMobileOpen] = useState(false);
+   const items = NAV[user?.role] || [];
++  const badges = { chat: useAdminChatUnread(user?.role === "admin") };
+ 
+   const handleLogout = async () => {
+     await logout();
+@@ -181,7 +200,7 @@ export default function DashboardLayout() {
+       {/* Desktop sidebar */}
+       <aside className="hidden lg:flex w-64 bg-white border-r border-[#E2E8F0] flex-col fixed inset-y-0 z-30">
+         <Brand />
+-        <SidebarContent items={items} />
++        <SidebarContent items={items} badges={badges} />
+         <div className="p-3 border-t border-[#E2E8F0] space-y-1">
+           <NavLink to="/profile" data-testid="nav-profile" className={({ isActive }) => `w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${isActive ? "bg-[#E6F5F8] text-[#0E7490]" : "text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]"}`}>
+             <UserCog className="h-[18px] w-[18px]" /> Profil Saya
+@@ -213,7 +232,7 @@ export default function DashboardLayout() {
+                   <SheetDescription className="sr-only">Tautan cepat menu utama LMS</SheetDescription>
+                 {/* Konten asli tautan menu sidebar Anda tetap di bawah sini... */}
+                 <Brand />
+-                <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} />
++                <SidebarContent items={items} badges={badges} onNavigate={() => setMobileOpen(false)} />
+                 <div className="p-3 border-t border-[#E2E8F0] space-y-1">
+                   <NavLink to="/profile" onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#475569] hover:bg-[#E6F5F8] hover:text-[#0E7490]">
+                     <UserCog className="h-[18px] w-[18px]" /> Profil Saya
+@@ -252,9 +271,10 @@ export default function DashboardLayout() {
+           </div>
+         </header>
+ 
+-        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
++        <main className={`p-4 sm:p-6 lg:p-8 max-w-[1400px] ${user?.role === "student" ? "pb-24 sm:pb-24" : ""}`}>
+           <Outlet />
+         </main>
++        {user?.role === "student" && <StudentChatWidget />}
+       </div>
+     </div>
+   );
+diff --git a/frontend/src/pages/CompleteBiodata.js b/frontend/src/pages/CompleteBiodata.js
+index 45f65df..22eb1d1 100644
+--- a/frontend/src/pages/CompleteBiodata.js
++++ b/frontend/src/pages/CompleteBiodata.js
+@@ -11,11 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+ import FullScreenLoader from "@/components/FullScreenLoader";
+ import { toast } from "sonner";
++import ClassPicker from "@/components/common/ClassPicker";
+ 
+ export default function CompleteBiodata() {
+   const { user, setUser, logout } = useAuth();
+   const navigate = useNavigate();
+-  const [form, setForm] = useState({ name: "", school_id: "", grade: "", phone: "", goal: "" });
++  const [form, setForm] = useState({ name: "", school_id: "", grade: "", level: "", class_id: "", phone: "", goal: "" });
+   const [schools, setSchools] = useState([]);
+   const [agree, setAgree] = useState(false);
+   const [saving, setSaving] = useState(false);
+@@ -24,7 +25,7 @@ export default function CompleteBiodata() {
+   useEffect(() => {
+     if (user === false) navigate("/login", { replace: true });
+     else if (user && !needsBiodata(user)) navigate(roleHome(user.role), { replace: true });
+-    if (user) setForm((f) => ({ name: f.name || user.name || "", school_id: f.school_id || user.school_id || "", grade: f.grade || user.grade || "", phone: f.phone || user.phone || "", goal: f.goal || user.goal || "" }));
++    if (user) setForm((f) => ({ name: f.name || user.name || "", school_id: f.school_id || user.school_id || "", grade: f.grade || user.grade || "", level: f.level || user.level || "", class_id: f.class_id || user.class_id || "", phone: f.phone || user.phone || "", goal: f.goal || user.goal || "" }));
+   }, [user, navigate]);
+   useEffect(() => { api.get("/public/schools").then((r) => setSchools(r.data)).catch(() => {}); }, []);
+ 
+@@ -36,7 +37,7 @@ export default function CompleteBiodata() {
+     if (!agree) return toast.error("Centang pernyataan kebenaran data terlebih dahulu");
+     setSaving(true);
+     try {
+-      const { data } = await api.put("/auth/profile", { ...form, name: form.name.trim(), grade: form.grade.trim(), phone: form.phone.trim() });
++      const { data } = await api.put("/auth/profile", { ...form, name: form.name.trim(), grade: (form.grade || "").trim(), phone: form.phone.trim() });
+       setUser(data);
+       toast.success("Biodata tersimpan. Selamat datang!");
+       navigate(roleHome(data.role), { replace: true });
+@@ -67,22 +68,17 @@ export default function CompleteBiodata() {
+             </div>
+             <div>
+               <Label className="text-[#0A1128]">Asal Sekolah</Label>
+-              <Select value={form.school_id} onValueChange={set("school_id")}>
++              <Select key={schools.length} value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
+                 <SelectTrigger className="mt-1.5 h-11" data-testid="biodata-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
+                 <SelectContent>
+                   {schools.map((s) => <SelectItem key={s.id} value={s.id} data-testid={`biodata-school-${s.id}`}>{s.name}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+             </div>
+-            <div className="grid grid-cols-2 gap-4">
+-              <div>
+-                <Label className="text-[#0A1128]">Kelas</Label>
+-                <Input required value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="biodata-grade" />
+-              </div>
+-              <div>
+-                <Label className="text-[#0A1128]">No. WhatsApp</Label>
+-                <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="biodata-phone" />
+-              </div>
++            <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="biodata-class" />
++            <div>
++              <Label className="text-[#0A1128]">No. WhatsApp</Label>
++              <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="biodata-phone" />
+             </div>
+             <div>
+               <Label className="text-[#0A1128]">Target Bergabung (Tujuan)</Label>
+diff --git a/frontend/src/pages/Profile.js b/frontend/src/pages/Profile.js
+index d73bb06..cc34796 100644
+--- a/frontend/src/pages/Profile.js
++++ b/frontend/src/pages/Profile.js
+@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
+ import { Label } from "@/components/ui/label";
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+ import { toast } from "sonner";
++import { AlertTriangle } from "lucide-react";
++import ClassPicker from "@/components/common/ClassPicker";
+ 
+ export default function Profile() {
+   const { user, setUser } = useAuth();
+-  const [form, setForm] = useState({ name: "", phone: "", grade: "", goal: "", school_id: "", school_name_text: "" });
++  const [form, setForm] = useState({ name: "", phone: "", grade: "", level: "", class_id: "", goal: "", school_id: "", school_name_text: "" });
+   const [schools, setSchools] = useState([]);
+   const [saving, setSaving] = useState(false);
+   const [pwd, setPwd] = useState({ current_password: "", new_password: "", confirm: "" });
+@@ -29,7 +31,7 @@ export default function Profile() {
+ 
+   useEffect(() => {
+     if (user) setForm({
+-      name: user.name || "", phone: user.phone || "", grade: user.grade || "",
++      name: user.name || "", phone: user.phone || "", grade: user.grade || "", level: user.level || "", class_id: user.class_id || "",
+       goal: user.goal || "", school_id: user.school_id || "", school_name_text: user.school_name_text || "",
+     });
+     if (user?.role === "tutor") { setQuals(user.qualifications || []); setCerts(user.certificates || []); }
+@@ -43,7 +45,7 @@ export default function Profile() {
+     setSaving(true);
+     try {
+       const payload = { name: form.name, phone: form.phone };
+-      if (user.role === "student") { payload.grade = form.grade; payload.goal = form.goal; payload.school_id = form.school_id || null; }
++      if (user.role === "student") { payload.grade = form.grade; payload.level = form.level || null; payload.class_id = form.class_id || ""; payload.goal = form.goal; payload.school_id = form.school_id || null; }
+       if (user.role === "proctor") payload.school_name_text = form.school_name_text;
+       const { data } = await api.put("/auth/profile", payload);
+       setUser(data);
+@@ -129,6 +131,12 @@ export default function Profile() {
+       <div className="grid lg:grid-cols-3 gap-6">
+         {/* Profile form */}
+         <form onSubmit={saveProfile} className="lg:col-span-2 bg-white rounded-2xl border border-[#E2E8F0] p-6" data-testid="profile-form">
++          {user.needs_class && (
++            <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" data-testid="profile-class-warning">
++              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
++              <p><b>Kelas Anda belum sesuai daftar resmi sekolah.</b> Pilih jenjang dan kelas di bawah, lalu klik <b>Simpan Perubahan</b> agar nilai Try Out Anda tercatat di kelas yang benar.</p>
++            </div>
++          )}
+           <div className="flex items-center gap-3 mb-5">
+             <div className="h-11 w-11 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><UserCog className="h-5 w-5" /></div>
+             <div>
+@@ -142,14 +150,14 @@ export default function Profile() {
+ 
+             {user.role === "student" && (
+               <>
+-                <div><Label>Kelas</Label><Input value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="profile-grade" /></div>
+                 <div>
+                   <Label>Asal Sekolah</Label>
+-                  <Select value={form.school_id} onValueChange={set("school_id")}>
++                  <Select key={schools.length} value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
+                     <SelectTrigger className="mt-1.5 h-11" data-testid="profile-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
+                     <SelectContent>{schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                   </Select>
+                 </div>
++                <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="profile-class" />
+                 <div><Label>Target Bergabung</Label><Textarea value={form.goal} onChange={set("goal")} className="mt-1.5" data-testid="profile-goal" /></div>
+               </>
+             )}
+diff --git a/frontend/src/pages/Register.js b/frontend/src/pages/Register.js
+index 7ca1c76..d2b5276 100644
+--- a/frontend/src/pages/Register.js
++++ b/frontend/src/pages/Register.js
+@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
+ import { Label } from "@/components/ui/label";
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+ import { toast } from "sonner";
++import ClassPicker from "@/components/common/ClassPicker";
+ 
+ export default function Register() {
+   const { user, setUser } = useAuth();
+   const navigate = useNavigate();
+-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", school_id: "", grade: "", goal: "" });
++  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", school_id: "", grade: "", level: "", class_id: "", goal: "" });
+   const [schools, setSchools] = useState([]);
+   const [loading, setLoading] = useState(false);
+   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
+@@ -75,25 +76,20 @@ export default function Register() {
+               <Label className="text-[#0A1128]">Nama Lengkap</Label>
+               <Input required value={form.name} onChange={set("name")} placeholder="Nama Anda" className="mt-1.5 h-11" data-testid="register-name" />
+             </div>
+-            <div className="grid grid-cols-2 gap-4">
+-              <div>
+-                <Label className="text-[#0A1128]">Kelas</Label>
+-                <Input required value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="register-grade" />
+-              </div>
+-              <div>
+-                <Label className="text-[#0A1128]">No. WhatsApp</Label>
+-                <Input required value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="register-phone" />
+-              </div>
++            <div>
++              <Label className="text-[#0A1128]">No. WhatsApp</Label>
++              <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="register-phone" />
+             </div>
+             <div>
+               <Label className="text-[#0A1128]">Asal Sekolah</Label>
+-              <Select value={form.school_id} onValueChange={set("school_id")}>
++              <Select value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
+                 <SelectTrigger className="mt-1.5 h-11" data-testid="register-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
+                 <SelectContent>
+                   {schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+             </div>
++            <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="register-class" />
+             <div>
+               <Label className="text-[#0A1128]">Email</Label>
+               <Input required type="email" value={form.email} onChange={set("email")} placeholder="nama@email.com" className="mt-1.5 h-11" data-testid="register-email" />
+diff --git a/frontend/src/pages/admin/AdminChat.js b/frontend/src/pages/admin/AdminChat.js
+new file mode 100644
+index 0000000..b72a652
+--- /dev/null
++++ b/frontend/src/pages/admin/AdminChat.js
+@@ -0,0 +1,90 @@
++import { useEffect, useMemo, useState } from "react";
++import { ArrowLeft, MessageCircle, Search } from "lucide-react";
++import api from "@/lib/api";
++import PageHeader from "@/components/common/PageHeader";
++import { Input } from "@/components/ui/input";
++import { MessageList, Composer, useChatPolling } from "@/components/chat/ChatParts";
++
++const ago = (iso) => new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
++
++function ThreadList({ threads, active, onPick, q, setQ }) {
++  const list = threads.filter((t) => `${t.student_name} ${t.student_email} ${t.school_name || ""} ${t.grade || ""}`.toLowerCase().includes(q.toLowerCase()));
++  return (
++    <div className="flex flex-col min-h-0 h-full">
++      <div className="p-3 border-b border-[#E2E8F0]">
++        <div className="relative">
++          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
++          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari siswa, sekolah, kelas" className="pl-9 h-10" data-testid="chat-thread-search" />
++        </div>
++      </div>
++      <div className="flex-1 min-h-0 overflow-y-auto" data-testid="chat-thread-list">
++        {list.length === 0 && <p className="text-sm text-[#94A3B8] text-center py-10">Belum ada chat masuk</p>}
++        {list.map((t) => (
++          <button key={t.id} onClick={() => onPick(t)} data-testid={`chat-thread-${t.student_id}`}
++            className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] flex gap-3 transition-colors duration-150 ${active === t.student_id ? "bg-[#E6F5F8]" : "hover:bg-[#F8FAFC]"}`}>
++            <div className="h-10 w-10 shrink-0 rounded-full bg-[#0E7490]/10 text-[#0E7490] flex items-center justify-center font-bold text-sm">{(t.student_name || "?").slice(0, 1).toUpperCase()}</div>
++            <div className="min-w-0 flex-1">
++              <div className="flex items-center gap-2">
++                <p className="font-semibold text-sm text-[#0A1128] truncate flex-1">{t.student_name}</p>
++                <span className="text-[10px] text-[#94A3B8] shrink-0">{ago(t.last_at)}</span>
++              </div>
++              <p className="text-[11px] text-[#94A3B8] truncate">{[t.school_name, t.grade].filter(Boolean).join(" · ") || t.student_email}</p>
++              <div className="flex items-center gap-2 mt-0.5">
++                <p className={`text-xs truncate flex-1 ${t.unread_admin ? "text-[#0A1128] font-semibold" : "text-[#475569]"}`}>{t.last_role === "admin" ? "Anda: " : ""}{t.last_text}</p>
++                {t.unread_admin > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center" data-testid={`chat-thread-unread-${t.student_id}`}>{t.unread_admin}</span>}
++              </div>
++            </div>
++          </button>
++        ))}
++      </div>
++    </div>
++  );
++}
++
++export default function AdminChat() {
++  const [threads, setThreads] = useState([]);
++  const [active, setActive] = useState(null);
++  const [q, setQ] = useState("");
++  const url = active ? `/admin/chat/threads/${active.student_id}/messages` : null;
++  const { messages, push } = useChatPolling(url, !!active);
++
++  useEffect(() => {
++    let alive = true;
++    const load = () => api.get("/admin/chat/threads").then((r) => alive && setThreads(r.data)).catch(() => {});
++    load();
++    const t = setInterval(() => { if (!document.hidden) load(); }, 5000);
++    return () => { alive = false; clearInterval(t); };
++  }, []);
++
++  const current = useMemo(() => threads.find((t) => t.student_id === active?.student_id) || active, [threads, active]);
++  const send = async (body) => { const { data } = await api.post(`/admin/chat/threads/${active.student_id}/messages`, body); push(data); };
++  const pick = (t) => { setActive(t); setTimeout(() => window.dispatchEvent(new Event("admin-chat-read")), 800); setThreads((ts) => ts.map((x) => (x.id === t.id ? { ...x, unread_admin: 0 } : x))); };
++
++  return (
++    <div data-testid="admin-chat-page">
++      <PageHeader title="Chat Siswa" subtitle="Pertanyaan yang dikirim siswa dari tombol chat di LMS. Balas langsung di sini." />
++      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden grid md:grid-cols-[320px_1fr] h-[calc(100dvh-13rem)] min-h-[420px]">
++        <div className={`${active ? "hidden md:flex" : "flex"} flex-col min-h-0 border-r border-[#E2E8F0]`}>
++          <ThreadList threads={threads} active={active?.student_id} onPick={pick} q={q} setQ={setQ} />
++        </div>
++        <div className={`${active ? "flex" : "hidden md:flex"} flex-col min-h-0 min-w-0`}>
++          {!active ? (
++            <div className="flex-1 flex flex-col items-center justify-center text-[#94A3B8] gap-2 p-6 text-center"><MessageCircle className="h-10 w-10" /><p className="text-sm">Pilih percakapan di sebelah kiri</p></div>
++          ) : (
++            <>
++              <div className="h-14 shrink-0 flex items-center gap-3 px-3 border-b border-[#E2E8F0]" data-testid="chat-active-header">
++                <button onClick={() => setActive(null)} className="md:hidden p-2 rounded-lg hover:bg-[#E6F5F8]" aria-label="Kembali" data-testid="chat-back"><ArrowLeft className="h-5 w-5" /></button>
++                <div className="min-w-0">
++                  <p className="font-semibold text-sm text-[#0A1128] truncate">{current.student_name}</p>
++                  <p className="text-[11px] text-[#94A3B8] truncate">{[current.school_name, current.grade, current.student_email].filter(Boolean).join(" · ")}</p>
++                </div>
++              </div>
++              <MessageList messages={messages} mine="admin" emptyText="Belum ada pesan." />
++              <Composer onSend={send} testPrefix="admin-chat" />
++            </>
++          )}
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/admin/ManageUsers.js b/frontend/src/pages/admin/ManageUsers.js
+index 5ba46a9..d9a0dee 100644
+--- a/frontend/src/pages/admin/ManageUsers.js
++++ b/frontend/src/pages/admin/ManageUsers.js
+@@ -1,6 +1,7 @@
+ import { useState } from "react";
+ import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock, FileText, Award, Download, FolderOpen } from "lucide-react";
+ import useFetch from "@/hooks/useFetch";
++import SchoolClassesDialog from "@/components/admin/SchoolClassesDialog";
+ import api, { apiError } from "@/lib/api";
+ import PageHeader from "@/components/common/PageHeader";
+ import { Loading, Empty } from "@/components/common/States";
+@@ -74,6 +75,7 @@ export default function ManageUsers() {
+   const [tab, setTab] = useState("pending");
+   const [open, setOpen] = useState(false);
+   const [schoolOpen, setSchoolOpen] = useState(false);
++  const [classSchool, setClassSchool] = useState(null);
+   const [form, setForm] = useState(EMPTY);
+   const [schoolForm, setSchoolForm] = useState({ name: "", city: "" });
+   const [edit, setEdit] = useState(null);
+@@ -124,7 +126,8 @@ export default function ManageUsers() {
+         {(schools || []).map((s) => (
+           <div key={s.id} className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex items-center gap-3" data-testid={`school-${s.id}`}>
+             <div className="h-10 w-10 rounded-lg bg-[#ECFDF5] text-[#10B981] flex items-center justify-center"><School className="h-5 w-5" /></div>
+-            <div><p className="font-semibold text-[#0A1128] text-sm">{s.name}</p><p className="text-xs text-[#94A3B8]">{s.city} · {s.student_count} siswa</p></div>
++            <div className="min-w-0 flex-1"><p className="font-semibold text-[#0A1128] text-sm truncate">{s.name}</p><p className="text-xs text-[#94A3B8]">{s.city} · {s.student_count} siswa</p></div>
++            <Button size="sm" variant="outline" onClick={() => setClassSchool(s)} className="rounded-full shrink-0 h-8 text-xs hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`school-classes-btn-${s.id}`}>Daftar Kelas</Button>
+           </div>
+         ))}
+       </div>
+@@ -320,6 +323,8 @@ export default function ManageUsers() {
+         </DialogContent>
+       </Dialog>
+ 
++      <SchoolClassesDialog school={classSchool} onOpenChange={(o) => { if (!o) { setClassSchool(null); refetchSchools(); refetch(); } }} />
++
+       {/* Create school */}
+       <Dialog open={schoolOpen} onOpenChange={setSchoolOpen}>
+         <DialogContent>

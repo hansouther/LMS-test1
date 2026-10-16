@@ -15,6 +15,7 @@ from seed import seed, seed_content, migrate_analysis
 import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, routes_proctor, routes_files, routes_classes, routes_payments
 import routes_site
 import routes_r2
+import routes_school_classes, routes_chat
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -55,6 +56,8 @@ app.include_router(routes_files.router)
 app.include_router(routes_classes.router)
 app.include_router(routes_payments.router)
 app.include_router(routes_site.router)
+app.include_router(routes_school_classes.router)
+app.include_router(routes_chat.router)
 
 @app.get("/api/")
 async def root():
@@ -74,6 +77,10 @@ async def startup():
     await db.payments.create_index("order_id", unique=True)
     await db.payments.create_index([("student_id", 1), ("item_type", 1), ("item_id", 1)])
     await db.tryout_access.create_index([("student_id", 1), ("tryout_id", 1)], unique=True)
+    await db.school_classes.create_index([("school_id", 1), ("label", 1)])
+    await db.school_classes.create_index("id", unique=True)
+    await db.chat_messages.create_index([("thread_id", 1), ("created_at", -1)])
+    await db.chat_threads.create_index("last_at")
     await seed(os.environ["ADMIN_EMAIL"], os.environ["ADMIN_PASSWORD"])
     await seed_content()
     await migrate_analysis()

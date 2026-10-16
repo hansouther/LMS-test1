@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Users, School, CheckCircle2, XCircle, Settings2, Clock, FileText, Award, Download, FolderOpen } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
+import SchoolClassesDialog from "@/components/admin/SchoolClassesDialog";
 import api, { apiError } from "@/lib/api";
 import PageHeader from "@/components/common/PageHeader";
 import { Loading, Empty } from "@/components/common/States";
@@ -74,6 +75,7 @@ export default function ManageUsers() {
   const [tab, setTab] = useState("pending");
   const [open, setOpen] = useState(false);
   const [schoolOpen, setSchoolOpen] = useState(false);
+  const [classSchool, setClassSchool] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [schoolForm, setSchoolForm] = useState({ name: "", city: "" });
   const [edit, setEdit] = useState(null);
@@ -124,7 +126,8 @@ export default function ManageUsers() {
         {(schools || []).map((s) => (
           <div key={s.id} className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex items-center gap-3" data-testid={`school-${s.id}`}>
             <div className="h-10 w-10 rounded-lg bg-[#ECFDF5] text-[#10B981] flex items-center justify-center"><School className="h-5 w-5" /></div>
-            <div><p className="font-semibold text-[#0A1128] text-sm">{s.name}</p><p className="text-xs text-[#94A3B8]">{s.city} · {s.student_count} siswa</p></div>
+            <div className="min-w-0 flex-1"><p className="font-semibold text-[#0A1128] text-sm truncate">{s.name}</p><p className="text-xs text-[#94A3B8]">{s.city} · {s.student_count} siswa</p></div>
+            <Button size="sm" variant="outline" onClick={() => setClassSchool(s)} className="rounded-full shrink-0 h-8 text-xs hover:bg-[#E6F5F8] hover:text-[#0E7490]" data-testid={`school-classes-btn-${s.id}`}>Daftar Kelas</Button>
           </div>
         ))}
       </div>
@@ -281,44 +284,7 @@ export default function ManageUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Create user */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Tambah Pengguna</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Nama</Label><Input value={form.name} onChange={set("name")} className="mt-1.5" data-testid="user-name" /></div>
-              <div><Label>Peran</Label>
-                <Select value={form.role} onValueChange={set("role")}>
-                  <SelectTrigger className="mt-1.5" data-testid="user-role"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="tutor">Tentor</SelectItem><SelectItem value="proctor">Proktor</SelectItem><SelectItem value="student">Siswa</SelectItem></SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>Email</Label><Input type="email" value={form.email} onChange={set("email")} className="mt-1.5" data-testid="user-email" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Kata Sandi</Label><Input value={form.password} onChange={set("password")} className="mt-1.5" data-testid="user-password" /></div>
-              <div><Label>Telepon</Label><Input value={form.phone} onChange={set("phone")} className="mt-1.5" data-testid="user-phone" /></div>
-            </div>
-            {(form.role === "proctor" || form.role === "student") && (
-              <div><Label>Sekolah</Label>
-                <Select value={form.school_id} onValueChange={set("school_id")}>
-                  <SelectTrigger className="mt-1.5" data-testid="user-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
-                  <SelectContent>{(schools || []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
-            {form.role === "tutor" && (
-              <div><Label>Kualifikasi (pisahkan dengan koma)</Label><Input value={form.qualifications} onChange={set("qualifications")} placeholder="Matematika, Fisika" className="mt-1.5" data-testid="user-quals" /></div>
-            )}
-            <p className="text-[11px] text-[#94A3B8]">Akun yang dibuat admin otomatis terverifikasi.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} className="bg-[#0E7490] hover:bg-[#0B5C74]" data-testid="save-user">Simpan</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SchoolClassesDialog school={classSchool} onOpenChange={(o) => { if (!o) { setClassSchool(null); refetchSchools(); refetch(); } }} />
 
       {/* Create school */}
       <Dialog open={schoolOpen} onOpenChange={setSchoolOpen}>

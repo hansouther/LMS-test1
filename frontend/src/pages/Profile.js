@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { UserCog, Save, KeyRound, Loader2, GraduationCap, FileText, Upload, X, Plus, Award } from "lucide-react";
+import { UserCog, Save, KeyRound, Loader2, GraduationCap, FileText, Upload, X, Plus, Award, AlertTriangle } from "lucide-react";
 import api, { apiError } from "@/lib/api";
 import { fileUrl } from "@/lib/media";
 import { useAuth, roleLabel } from "@/context/AuthContext";
@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import ClassPicker from "@/components/common/ClassPicker";
 
 export default function Profile() {
   const { user, setUser } = useAuth();
-  const [form, setForm] = useState({ name: "", phone: "", grade: "", goal: "", school_id: "", school_name_text: "" });
+  const [form, setForm] = useState({ name: "", phone: "", grade: "", level: "", class_id: "", goal: "", school_id: "", school_name_text: "" });
   const [schools, setSchools] = useState([]);
   const [saving, setSaving] = useState(false);
   const [pwd, setPwd] = useState({ current_password: "", new_password: "", confirm: "" });
@@ -29,7 +30,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) setForm({
-      name: user.name || "", phone: user.phone || "", grade: user.grade || "",
+      name: user.name || "", phone: user.phone || "", grade: user.grade || "", level: user.level || "", class_id: user.class_id || "",
       goal: user.goal || "", school_id: user.school_id || "", school_name_text: user.school_name_text || "",
     });
     if (user?.role === "tutor") { setQuals(user.qualifications || []); setCerts(user.certificates || []); }
@@ -43,7 +44,13 @@ export default function Profile() {
     setSaving(true);
     try {
       const payload = { name: form.name, phone: form.phone };
-      if (user.role === "student") { payload.grade = form.grade; payload.goal = form.goal; payload.school_id = form.school_id || null; }
+      if (user.role === "student") { 
+        payload.grade = form.grade; 
+        payload.level = form.level || null; 
+        payload.class_id = form.class_id || ""; 
+        payload.goal = form.goal; 
+        payload.school_id = form.school_id || null; 
+      }
       if (user.role === "proctor") payload.school_name_text = form.school_name_text;
       const { data } = await api.put("/auth/profile", payload);
       setUser(data);
@@ -129,6 +136,12 @@ export default function Profile() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Profile form */}
         <form onSubmit={saveProfile} className="lg:col-span-2 bg-white rounded-2xl border border-[#E2E8F0] p-6" data-testid="profile-form">
+          {user.needs_class && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" data-testid="profile-class-warning">
+              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+              <p><b>Kelas Anda belum sesuai daftar resmi sekolah.</b> Pilih jenjang dan kelas di bawah, lalu klik <b>Simpan Perubahan</b> agar nilai Try Out Anda tercatat di kelas yang benar.</p>
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-5">
             <div className="h-11 w-11 rounded-xl bg-[#E6F5F8] text-[#0E7490] flex items-center justify-center"><UserCog className="h-5 w-5" /></div>
             <div>
@@ -142,14 +155,14 @@ export default function Profile() {
 
             {user.role === "student" && (
               <>
-                <div><Label>Kelas</Label><Input value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="profile-grade" /></div>
                 <div>
                   <Label>Asal Sekolah</Label>
-                  <Select value={form.school_id} onValueChange={set("school_id")}>
+                  <Select key={schools.length} value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
                     <SelectTrigger className="mt-1.5 h-11" data-testid="profile-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
                     <SelectContent>{schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="profile-class" />
                 <div><Label>Target Bergabung</Label><Textarea value={form.goal} onChange={set("goal")} className="mt-1.5" data-testid="profile-goal" /></div>
               </>
             )}

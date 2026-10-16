@@ -11,11 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { toast } from "sonner";
+import ClassPicker from "@/components/common/ClassPicker";
 
 export default function CompleteBiodata() {
   const { user, setUser, logout } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", school_id: "", grade: "", phone: "", goal: "" });
+  const [form, setForm] = useState({ name: "", school_id: "", grade: "", level: "", class_id: "", phone: "", goal: "" });
   const [schools, setSchools] = useState([]);
   const [agree, setAgree] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -24,9 +25,20 @@ export default function CompleteBiodata() {
   useEffect(() => {
     if (user === false) navigate("/login", { replace: true });
     else if (user && !needsBiodata(user)) navigate(roleHome(user.role), { replace: true });
-    if (user) setForm((f) => ({ name: f.name || user.name || "", school_id: f.school_id || user.school_id || "", grade: f.grade || user.grade || "", phone: f.phone || user.phone || "", goal: f.goal || user.goal || "" }));
+    if (user) setForm((f) => ({ 
+      name: f.name || user.name || "", 
+      school_id: f.school_id || user.school_id || "", 
+      grade: f.grade || user.grade || "", 
+      level: f.level || user.level || "", 
+      class_id: f.class_id || user.class_id || "", 
+      phone: f.phone || user.phone || "", 
+      goal: f.goal || user.goal || "" 
+    }));
   }, [user, navigate]);
-  useEffect(() => { api.get("/public/schools").then((r) => setSchools(r.data)).catch(() => {}); }, []);
+
+  useEffect(() => { 
+    api.get("/public/schools").then((r) => setSchools(r.data)).catch(() => {}); 
+  }, []);
 
   if (!user) return <FullScreenLoader label="Memuat biodata..." />;
 
@@ -36,7 +48,12 @@ export default function CompleteBiodata() {
     if (!agree) return toast.error("Centang pernyataan kebenaran data terlebih dahulu");
     setSaving(true);
     try {
-      const { data } = await api.put("/auth/profile", { ...form, name: form.name.trim(), grade: form.grade.trim(), phone: form.phone.trim() });
+      const { data } = await api.put("/auth/profile", { 
+        ...form, 
+        name: form.name.trim(), 
+        grade: (form.grade || "").trim(), 
+        phone: form.phone.trim() 
+      });
       setUser(data);
       toast.success("Biodata tersimpan. Selamat datang!");
       navigate(roleHome(data.role), { replace: true });
@@ -46,7 +63,11 @@ export default function CompleteBiodata() {
       setSaving(false);
     }
   };
-  const handleLogout = async () => { await logout(); navigate("/login", { replace: true }); };
+
+  const handleLogout = async () => { 
+    await logout(); 
+    navigate("/login", { replace: true }); 
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#EFF6F8]" data-testid="complete-biodata">
@@ -67,22 +88,19 @@ export default function CompleteBiodata() {
             </div>
             <div>
               <Label className="text-[#0A1128]">Asal Sekolah</Label>
-              <Select value={form.school_id} onValueChange={set("school_id")}>
+              <Select key={schools.length} value={form.school_id} onValueChange={(v) => setForm((f) => ({ ...f, school_id: v, class_id: "" }))}>
                 <SelectTrigger className="mt-1.5 h-11" data-testid="biodata-school"><SelectValue placeholder="Pilih sekolah" /></SelectTrigger>
                 <SelectContent>
                   {schools.map((s) => <SelectItem key={s.id} value={s.id} data-testid={`biodata-school-${s.id}`}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-[#0A1128]">Kelas</Label>
-                <Input required value={form.grade} onChange={set("grade")} placeholder="Kelas 12 IPA" className="mt-1.5 h-11" data-testid="biodata-grade" />
-              </div>
-              <div>
-                <Label className="text-[#0A1128]">No. WhatsApp</Label>
-                <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="biodata-phone" />
-              </div>
+            
+            <ClassPicker schoolId={form.school_id} value={form} onChange={(p) => setForm((f) => ({ ...f, ...p }))} testPrefix="biodata-class" />
+            
+            <div>
+              <Label className="text-[#0A1128]">No. WhatsApp</Label>
+              <Input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" className="mt-1.5 h-11" data-testid="biodata-phone" />
             </div>
             <div>
               <Label className="text-[#0A1128]">Target Bergabung (Tujuan)</Label>
