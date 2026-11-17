@@ -12,7 +12,7 @@ from storage import put_object, APP_NAME
 router = APIRouter(prefix="/api", tags=["chat"])
 student_only = require_roles("student")
 admin_only = require_roles("admin")
-chat_user = require_roles("student", "admin")
+chat_user = require_roles("student", "admin", "tutor")
 
 IMG_EXT = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
 MAX_TEXT = 2000

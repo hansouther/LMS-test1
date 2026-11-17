@@ -18,6 +18,7 @@ from routes_files import save_question_image, IMAGE_EXT
 import notifications
 import analysis
 import irt
+import access_codes
 from grading import grade_attempt
 from tryout_session import schedule_status, remaining_seconds, answered_count
 
@@ -55,6 +56,7 @@ class CourseBody(BaseModel):
     price: int = 0
     thumbnail: Optional[str] = None
     active: bool = True
+    access_code: Optional[str] = None  # kosong = terbuka untuk semua siswa
 
 
 class SessionBody(BaseModel):
@@ -96,6 +98,7 @@ class TryoutBody(BaseModel):
     shuffle_options: bool = False
     tab_warning_limit: int = Field(5, ge=0, le=20)  # 0 = deteksi pindah tab nonaktif
     show_review: bool = False  # pembahasan & kunci dibuka untuk siswa
+    access_code: Optional[str] = None  # kosong = terbuka untuk semua siswa
 
 
 class IrtScaleBody(BaseModel):
@@ -276,27 +279,34 @@ async def list_courses(user: dict = Depends(admin_only)):
     items = await db.courses.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
     for c in items:
         c["enrolled_count"] = await db.enrollments.count_documents({"course_id": c["id"]})
+    await access_codes.attach_codes("course", items)
     return items
 
 
 @router.post("/courses")
 async def create_course(body: CourseBody, user: dict = Depends(admin_only)):
-    doc = {"id": new_id(), **body.model_dump(), "created_at": now_iso()}
+    access_codes.validate(body.access_code)
+    doc = {"id": new_id(), **body.model_dump(exclude={"access_code"}), "created_at": now_iso()}
     await db.courses.insert_one(doc)
+    await access_codes.save_code("course", doc["id"], body.access_code)
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
 @router.put("/courses/{item_id}")
 async def update_course(item_id: str, body: CourseBody, user: dict = Depends(admin_only)):
-    res = await db.courses.update_one({"id": item_id}, {"$set": body.model_dump()})
+    access_codes.validate(body.access_code)
+    res = await db.courses.update_one({"id": item_id}, {"$set": body.model_dump(exclude={"access_code"})})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Kursus tidak ditemukan")
+    if "access_code" in body.model_fields_set:
+        await access_codes.save_code("course", item_id, body.access_code)
     return {"ok": True}
 
 
 @router.delete("/courses/{item_id}")
 async def delete_course(item_id: str, user: dict = Depends(admin_only)):
     await db.courses.delete_one({"id": item_id})
+    await access_codes.delete_code("course", item_id)
     return {"ok": True}
 
 
@@ -447,15 +457,18 @@ async def list_tryouts(user: dict = Depends(admin_only)):
         t["attempt_count"] = await db.attempts.count_documents({"tryout_id": t["id"], "status": "submitted"})
         t["in_progress_count"] = await db.attempts.count_documents({"tryout_id": t["id"], "status": "in_progress"})
         t["schedule_status"] = schedule_status(t)
+    await access_codes.attach_codes("tryout", items)
     return items
 
 
 @router.post("/tryouts")
 async def create_tryout(body: TryoutBody, background: BackgroundTasks, user: dict = Depends(admin_only)):
+    access_codes.validate(body.access_code)
     key, custom = _clean_scale(body.irt_scale, body.irt_scale_custom)
-    doc = {"id": new_id(), **body.model_dump(), "irt_scale": key, "irt_scale_custom": custom,
+    doc = {"id": new_id(), **body.model_dump(exclude={"access_code"}), "irt_scale": key, "irt_scale_custom": custom,
            "created_by": user["id"], "created_at": now_iso()}
     await db.tryouts.insert_one(doc)
+    await access_codes.save_code("tryout", doc["id"], body.access_code)
     if doc.get("published") and doc.get("kind", "standalone") == "standalone":
         recipients = await _active_student_recipients()
         if recipients:
@@ -468,9 +481,12 @@ async def update_tryout(tryout_id: str, body: TryoutBody, background: Background
     existing = await db.tryouts.find_one({"id": tryout_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
+    access_codes.validate(body.access_code)
     key, custom = _clean_scale(body.irt_scale, body.irt_scale_custom)
-    updates = {**body.model_dump(), "irt_scale": key, "irt_scale_custom": custom}
+    updates = {**body.model_dump(exclude={"access_code"}), "irt_scale": key, "irt_scale_custom": custom}
     await db.tryouts.update_one({"id": tryout_id}, {"$set": updates})
+    if "access_code" in body.model_fields_set:
+        await access_codes.save_code("tryout", tryout_id, body.access_code)
     scale_changed = (existing.get("irt_scale") or irt.DEFAULT_SCALE) != key or (existing.get("irt_scale_custom") or None) != custom
     rescored = await _rescore_attempts(tryout_id, {**existing, **updates}) if scale_changed else 0
     if body.published and not existing.get("published") and body.kind == "standalone":
@@ -527,6 +543,7 @@ async def delete_tryout(tryout_id: str, user: dict = Depends(admin_only)):
     await db.tryouts.delete_one({"id": tryout_id})
     await db.questions.delete_many({"tryout_id": tryout_id})
     await db.tryout_violations.delete_many({"tryout_id": tryout_id})
+    await access_codes.delete_code("tryout", tryout_id)
     return {"ok": True}
 
 

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Users, ClipboardCheck, Clock, Save, Star, BookOpen, Plus, Trash2, LinkIcon, FileText, Paperclip, Loader2, ChevronRight } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import api, { apiError } from "@/lib/api";
@@ -15,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { formatDate } from "@/lib/format";
 import { fileUrl, uploadFile } from "@/lib/media";
 import { toast } from "sonner";
+import { ClassChatDialog, ClassChatButton, useClassChatUnread } from "@/components/chat/ClassChat";
 
 const ATT_OPTS = [["present", "Hadir"], ["late", "Terlambat"], ["absent", "Tidak Hadir"]];
 
@@ -26,10 +28,18 @@ export default function ClassManagerView() {
   const [materialSession, setMaterialSession] = useState(null);
   const [attSession, setAttSession] = useState(null);
   const [recap, setRecap] = useState(null);
+  const [chat, setChat] = useState(null);
+  const { byClass, refetch: refetchUnread } = useClassChatUnread();
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get("chat");
+    const c = id && classes?.find((x) => x.id === id);
+    if (c) { setChat(c); setParams({}, { replace: true }); }
+  }, [params, classes, setParams]);
 
   return (
     <div data-testid="class-manager">
-      <PageHeader title="Manajemen Kelas" subtitle="Kelola materi & presensi tiap pertemuan pada kelas terkonfirmasi." />
+      <PageHeader title="Manajemen Kelas" subtitle="Kelola materi, presensi, dan chat grup bersama siswa pada kelas terkonfirmasi." />
 
       {loading ? <Loading /> : !classes?.length ? (
         <Empty icon={Users} title="Belum ada kelas" desc="Kelas terkonfirmasi akan muncul di sini." />
@@ -46,6 +56,7 @@ export default function ClassManagerView() {
                   </div>
                 </button>
                 <div className="flex items-center gap-2 shrink-0">
+                  <ClassChatButton cls={c} unread={byClass[c.id]} onOpen={setChat} />
                   <Button size="sm" variant="outline" onClick={() => setRecap(c)} className="rounded-full hover:bg-[#ECFDF5] hover:text-[#10B981]" data-testid={`recap-btn-${c.id}`}><ClipboardCheck className="h-4 w-4" /> Rekap</Button>
                   <button onClick={() => setActive(active === c.id ? null : c.id)}><ChevronRight className={`h-5 w-5 text-[#94A3B8] transition-transform duration-200 ${active === c.id ? "rotate-90" : ""}`} /></button>
                 </div>
@@ -81,6 +92,7 @@ export default function ClassManagerView() {
       {materialSession && <MaterialDialog data={materialSession} onClose={() => setMaterialSession(null)} />}
       {attSession && <AttendanceDialog data={attSession} isTutor={isTutor} onClose={() => setAttSession(null)} />}
       {recap && <RecapDialog cls={recap} onClose={() => setRecap(null)} />}
+      {chat && <ClassChatDialog cls={chat} onClose={() => { setChat(null); refetchUnread(); }} />}
     </div>
   );
 }

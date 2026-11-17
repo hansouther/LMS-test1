@@ -14,8 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
+import { AccessCodeField, LockBadge } from "@/components/common/AccessCodeField";
 
-const EMPTY = { title: "", description: "", subject: "", level: "Umum", price: 0, thumbnail: "", active: true };
+const EMPTY = { title: "", description: "", subject: "", level: "Umum", price: 0, thumbnail: "", active: true, access_code: "" };
 
 export default function ManageCourses() {
   const { data, loading, refetch } = useFetch("/admin/courses");
@@ -26,10 +27,10 @@ export default function ManageCourses() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
 
   const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
-  const openEdit = (c) => { setForm({ title: c.title, description: c.description, subject: c.subject, level: c.level, price: c.price, thumbnail: c.thumbnail || "", active: c.active }); setEditId(c.id); setOpen(true); };
+  const openEdit = (c) => { setForm({ title: c.title, description: c.description, subject: c.subject, level: c.level, price: c.price, thumbnail: c.thumbnail || "", active: c.active, access_code: c.access_code || "" }); setEditId(c.id); setOpen(true); };
 
   const save = async () => {
-    const payload = { ...form, price: parseInt(form.price || 0, 10), thumbnail: form.thumbnail || null };
+    const payload = { ...form, price: parseInt(form.price || 0, 10), thumbnail: form.thumbnail || null, access_code: form.access_code || null };
     try {
       if (editId) await api.put(`/admin/courses/${editId}`, payload);
       else await api.post("/admin/courses", payload);
@@ -59,6 +60,7 @@ export default function ManageCourses() {
                 <span>{c.level}</span>
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.enrolled_count} terdaftar</span>
               </div>
+              {c.access_code && <div className="mt-2"><LockBadge code={c.access_code} testId={`course-code-badge-${c.id}`} /></div>}
               <div className="mt-4 flex items-center justify-between">
                 <span className="font-head font-bold text-[#0E7490]">{formatRupiah(c.price)}</span>
                 <div className="flex gap-1">
@@ -73,7 +75,7 @@ export default function ManageCourses() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editId ? "Edit Kursus" : "Tambah Kursus"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Judul</Label><Input value={form.title} onChange={set("title")} className="mt-1.5" data-testid="course-title" /></div>
@@ -86,6 +88,7 @@ export default function ManageCourses() {
               <div><Label>Harga (Rp)</Label><Input type="number" value={form.price} onChange={set("price")} className="mt-1.5" data-testid="course-price" /></div>
               <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] px-3 mt-6"><Label>Aktif</Label><Switch checked={form.active} onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))} data-testid="course-active" /></div>
             </div>
+            <AccessCodeField value={form.access_code} onChange={(v) => setForm((f) => ({ ...f, access_code: v }))} testIdPrefix="course-access-code" />
             <div><Label>URL Thumbnail (opsional)</Label><Input value={form.thumbnail} onChange={set("thumbnail")} className="mt-1.5" placeholder="https://..." data-testid="course-thumbnail" /></div>
           </div>
           <DialogFooter>

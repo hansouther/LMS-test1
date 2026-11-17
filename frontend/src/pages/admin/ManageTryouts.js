@@ -16,8 +16,9 @@ import IrtScaleFields, { EMPTY_CUSTOM, toCustomPayload, SCALE_PRESETS } from "@/
 import { formatRupiah, formatDateTime, toLocalInput, fromLocalInput } from "@/lib/format";
 import { toast } from "sonner";
 import DuplicateDialog from "@/components/common/DuplicateDialog";
+import { AccessCodeField, LockBadge } from "@/components/common/AccessCodeField";
 
-const EMPTY = { title: "", description: "", subject: "", duration_minutes: 60, published: false, irt_scale: "snbt", irt_scale_custom: EMPTY_CUSTOM, price: 0, start_at: "", end_at: "", shuffle_questions: false, shuffle_options: false, tab_warning_limit: 5, show_review: false };
+const EMPTY = { title: "", description: "", subject: "", duration_minutes: 60, published: false, irt_scale: "snbt", irt_scale_custom: EMPTY_CUSTOM, price: 0, start_at: "", end_at: "", shuffle_questions: false, shuffle_options: false, tab_warning_limit: 5, show_review: false, access_code: "" };
 const SCHED = { upcoming: ["Belum dibuka", "#C9A227", "#FBF3DC"], open: ["Dibuka", "#10B981", "#ECFDF5"], closed: ["Ditutup", "#EF4444", "#FEF2F2"] };
 const scaleLabel = (t) => (SCALE_PRESETS.find((p) => p.key === (t.irt_scale || "snbt")) || SCALE_PRESETS[0]).label;
 
@@ -31,11 +32,11 @@ export default function ManageTryouts() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
 
   const openNew = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
-  const openEdit = (t) => { setForm({ title: t.title, description: t.description || "", subject: t.subject, duration_minutes: t.duration_minutes, published: t.published, irt_scale: t.irt_scale || "snbt", irt_scale_custom: t.irt_scale_custom || EMPTY_CUSTOM, price: t.price || 0, start_at: toLocalInput(t.start_at), end_at: toLocalInput(t.end_at), shuffle_questions: !!t.shuffle_questions, shuffle_options: !!t.shuffle_options, tab_warning_limit: t.tab_warning_limit ?? 5, show_review: !!t.show_review }); setEditId(t.id); setOpen(true); };
+  const openEdit = (t) => { setForm({ title: t.title, description: t.description || "", subject: t.subject, duration_minutes: t.duration_minutes, published: t.published, irt_scale: t.irt_scale || "snbt", irt_scale_custom: t.irt_scale_custom || EMPTY_CUSTOM, price: t.price || 0, start_at: toLocalInput(t.start_at), end_at: toLocalInput(t.end_at), shuffle_questions: !!t.shuffle_questions, shuffle_options: !!t.shuffle_options, tab_warning_limit: t.tab_warning_limit ?? 5, show_review: !!t.show_review, access_code: t.access_code || "" }); setEditId(t.id); setOpen(true); };
 
   const save = async () => {
     if (form.start_at && form.end_at && new Date(form.end_at) <= new Date(form.start_at)) return toast.error("Waktu tutup harus setelah waktu buka");
-    const payload = { ...form, start_at: fromLocalInput(form.start_at), end_at: fromLocalInput(form.end_at), duration_minutes: parseInt(form.duration_minutes || 60, 10), price: Math.max(0, parseInt(form.price || 0, 10) || 0), tab_warning_limit: Math.min(20, Math.max(0, parseInt(form.tab_warning_limit, 10) || 0)), irt_scale_custom: form.irt_scale === "custom" ? toCustomPayload(form.irt_scale_custom) : null };
+    const payload = { ...form, start_at: fromLocalInput(form.start_at), end_at: fromLocalInput(form.end_at), duration_minutes: parseInt(form.duration_minutes || 60, 10), price: Math.max(0, parseInt(form.price || 0, 10) || 0), tab_warning_limit: Math.min(20, Math.max(0, parseInt(form.tab_warning_limit, 10) || 0)), irt_scale_custom: form.irt_scale === "custom" ? toCustomPayload(form.irt_scale_custom) : null, access_code: form.access_code || null };
     try {
       if (editId) {
         const { data: res } = await api.put(`/admin/tryouts/${editId}`, payload);
@@ -88,6 +89,7 @@ export default function ManageTryouts() {
               <div className="mt-2 flex flex-wrap gap-1.5"><span className="inline-flex items-center rounded-full border border-[#0E7490]/30 bg-[#E6F5F8] px-2.5 py-0.5 text-[11px] font-semibold text-[#0E7490]" data-testid={`tryout-scale-${t.id}`}>Skala IRT: {scaleLabel(t)}</span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-[#E2E8F0] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]" data-testid={`tryout-tab-limit-badge-${t.id}`}><ShieldAlert className="h-3 w-3" /> {(t.tab_warning_limit ?? 5) > 0 ? `Maks ${t.tab_warning_limit ?? 5}x pindah tab` : "Deteksi tab nonaktif"}</span>
                 {(t.shuffle_questions || t.shuffle_options) && <span className="inline-flex items-center gap-1 rounded-full border border-[#C9A227]/40 bg-[#FBF3DC] px-2.5 py-0.5 text-[11px] font-semibold text-[#8A6D12]" data-testid={`tryout-shuffle-${t.id}`}><Shuffle className="h-3 w-3" /> Acak {[t.shuffle_questions && "soal", t.shuffle_options && "pilihan"].filter(Boolean).join(" & ")}</span>}
+                <LockBadge code={t.access_code} testId={`tryout-code-badge-${t.id}`} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => navigate(`/admin/tryouts/${t.id}/builder`)} className="rounded-full bg-[#0E7490] hover:bg-[#0B5C74]" data-testid={`build-${t.id}`}><Settings2 className="h-4 w-4" /> Kelola Soal</Button>
@@ -127,6 +129,7 @@ export default function ManageTryouts() {
               <Input type="number" min="0" value={form.price} onChange={set("price")} className="mt-1.5" data-testid="tryout-price" />
               <p className="mt-1 text-xs text-[#94A3B8]">Try Out berbayar dibuka setelah siswa membayar via Midtrans (VA, QRIS, GoPay, kartu).</p>
             </div>
+            <AccessCodeField value={form.access_code} onChange={(v) => setForm((f) => ({ ...f, access_code: v }))} testIdPrefix="tryout-access-code" />
             <IrtScaleFields value={form.irt_scale} custom={form.irt_scale_custom} onChange={(v) => setForm((f) => ({ ...f, irt_scale: v }))} onCustomChange={(c) => setForm((f) => ({ ...f, irt_scale_custom: c }))} testIdPrefix="tryout-irt-scale" />
             <div className="rounded-lg border border-[#E2E8F0] p-3 space-y-3" data-testid="tryout-shuffle-fields">
               <Label className="flex items-center gap-1.5"><Shuffle className="h-4 w-4 text-[#0E7490]" /> Pengacakan (anti mencontek)</Label>

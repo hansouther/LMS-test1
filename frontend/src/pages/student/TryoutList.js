@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Clock, HelpCircle, PlayCircle, Eye, CreditCard, Loader2 } from "lucide-react";
+import { ClipboardList, Clock, HelpCircle, PlayCircle, Eye, CreditCard, Loader2, Lock } from "lucide-react";
 import useFetch from "@/hooks/useFetch";
 import PageHeader from "@/components/common/PageHeader";
 import { Loading, Empty } from "@/components/common/States";
@@ -9,6 +9,7 @@ import { enterFullscreen } from "@/lib/fullscreen";
 import { formatRupiah, formatDateTime, formatNilai } from "@/lib/format";
 import { payItem } from "@/lib/midtrans";
 import InstallAppBanner from "@/components/common/InstallAppBanner";
+import { UnlockDialog } from "@/components/common/UnlockDialog";
 
 const STATUS = {
   submitted: { label: "Selesai", color: "#10B981", bg: "#ECFDF5" },
@@ -20,6 +21,7 @@ export default function TryoutList() {
   const { data, loading, refetch } = useFetch("/student/tryouts");
   const navigate = useNavigate();
   const [busy, setBusy] = useState(null);
+  const [unlockItem, setUnlockItem] = useState(null);
   const buy = async (t) => { setBusy(t.id); try { await payItem("tryout", t.id, { onPaid: refetch }); } finally { setBusy(null); } };
 
   return (
@@ -59,6 +61,10 @@ export default function TryoutList() {
                     <div className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2 text-center text-xs font-semibold text-[#475569]" data-testid={`tryout-schedule-${t.id}`}>
                       {t.schedule_status === "upcoming" ? `Dibuka ${formatDateTime(t.start_at)}` : "Try Out sudah ditutup"}
                     </div>
+                  ) : t.locked ? (
+                    <Button className="w-full rounded-full bg-[#0A1128] hover:bg-[#1E293B]" onClick={() => setUnlockItem(t)} data-testid={`unlock-tryout-${t.id}`}>
+                      <Lock className="h-4 w-4" /> Masukkan Kode Akses
+                    </Button>
                   ) : !t.has_access ? (
                     <Button className="w-full rounded-full bg-[#C9A227] hover:bg-[#A9871C] text-[#0A1128] font-semibold" disabled={busy === t.id} onClick={() => buy(t)} data-testid={`buy-tryout-${t.id}`}>
                       {busy === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />} Beli Akses · {formatRupiah(t.price)}
@@ -74,6 +80,7 @@ export default function TryoutList() {
           })}
         </div>
       )}
+      <UnlockDialog item={unlockItem} itemType="tryout" open={!!unlockItem} onOpenChange={(v) => !v && setUnlockItem(null)} onUnlocked={refetch} />
     </div>
   );
 }

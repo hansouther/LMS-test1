@@ -16,6 +16,9 @@ import routes_auth, routes_public, routes_admin, routes_student, routes_tutor, r
 import routes_site
 import routes_r2
 import routes_school_classes, routes_chat
+import access_codes
+import routes_class_chat
+import notifications
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -30,6 +33,7 @@ allowed_origins = [
     "https://binaralms.com",
     "https://www.binaralms.com",
 ]
+allowed_origins += [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip() and o.strip() != "*" and o.strip() not in allowed_origins]
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +62,9 @@ app.include_router(routes_payments.router)
 app.include_router(routes_site.router)
 app.include_router(routes_school_classes.router)
 app.include_router(routes_chat.router)
+app.include_router(access_codes.router)
+app.include_router(routes_class_chat.router)
+app.include_router(notifications.router)
 
 @app.get("/api/")
 async def root():
@@ -68,6 +75,8 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("role")
     await db.users.create_index("id", unique=True)
+    await db.class_chat_messages.create_index([("slot_id", 1), ("created_at", -1)])
+    await db.class_chat_reads.create_index([("user_id", 1), ("slot_id", 1)])
     await db.attempts.create_index([("student_id", 1), ("tryout_id", 1)])
     await db.questions.create_index("tryout_id")
     await db.login_attempts.create_index("identifier")

@@ -6,6 +6,7 @@ from database import db
 from utils import new_id, now_iso
 from security import require_roles
 import payments as mt
+import access_codes
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 student_only = require_roles("student")
@@ -52,6 +53,7 @@ async def checkout(body: CheckoutBody, user: dict = Depends(student_only)):
     sid = user["id"]
     if await _already_has_access(body.item_type, body.item_id, sid):
         raise HTTPException(status_code=400, detail="Anda sudah memiliki akses item ini")
+    await access_codes.require_unlocked(body.item_type, item, sid)
     price = int(item.get("price") or 0)
     order = {
         "id": new_id(), "order_id": f"BNR-{body.item_type[:2].upper()}-{new_id()[:12].upper()}",

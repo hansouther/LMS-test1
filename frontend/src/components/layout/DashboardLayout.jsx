@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
-import {
+import { AtSign,
   LayoutDashboard, Newspaper, CalendarDays, BookOpen, CalendarClock, FileText,
   Radio, Handshake, Users, GraduationCap, LogOut, Menu, X, ClipboardList,
   Gavel, CalendarCheck, School, BarChart3, MonitorPlay, Download, Library, Bell, UserCog, ClipboardCheck, Target, FileBarChart2, Wallet,
@@ -114,23 +114,27 @@ function Brand() {
   );
 }
 
-function StudentBell() {
+function NotifBell({ base }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
 
-  const load = () => api.get("/student/notifications").then((r) => { setItems(r.data.items || []); setUnread(r.data.unread || 0); }).catch(() => {});
   useEffect(() => {
+    const load = () => api.get(base).then((r) => { setItems(r.data.items || []); setUnread(r.data.unread || 0); }).catch(() => {});
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
-  }, []);
+  }, [base]);
 
   const onOpen = (o) => {
-    if (o && unread > 0) api.post("/student/notifications/read").then(() => setUnread(0)).catch(() => {});
+    setOpen(o);
+    if (o && unread > 0) api.post(`${base}/read`).then(() => setUnread(0)).catch(() => {});
   };
+  const go = (n) => { if (n.link) { setOpen(false); navigate(n.link); } };
 
   return (
-    <Popover onOpenChange={onOpen}>
+    <Popover open={open} onOpenChange={onOpen}>
       <PopoverTrigger asChild>
         <button className="relative p-2 rounded-lg hover:bg-[#E6F5F8] text-[#475569] transition-colors duration-200" data-testid="student-bell" title="Notifikasi">
           <Bell className="h-5 w-5" />
@@ -143,9 +147,9 @@ function StudentBell() {
           {items.length === 0 ? (
             <p className="text-sm text-[#94A3B8] text-center py-8">Belum ada notifikasi</p>
           ) : items.map((n) => (
-            <div key={n.id} className={`p-3 border-b border-[#F1F5F9] ${!n.read ? "bg-[#EFF6F8]" : ""}`} data-testid={`notif-${n.id}`}>
-              <p className="text-sm font-medium text-[#0A1128]">{n.title}</p>
-              {n.body && <p className="text-xs text-[#475569] mt-0.5">{n.body}</p>}
+            <div key={n.id} onClick={() => go(n)} className={`p-3 border-b border-[#F1F5F9] ${!n.read ? "bg-[#EFF6F8]" : ""} ${n.link ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`} data-testid={`notif-${n.id}`}>
+              <p className="text-sm font-medium text-[#0A1128] flex items-start gap-1.5">{n.type === "class_mention" && <AtSign className="h-4 w-4 mt-0.5 shrink-0 text-[#C9A227]" />}{n.title}</p>
+              {n.body && <p className="text-xs text-[#475569] mt-0.5 line-clamp-2">{n.body}</p>}
             </div>
           ))}
         </div>
@@ -254,7 +258,8 @@ export default function DashboardLayout() {
 
           <div className="flex items-center gap-3">
             {user?.role === "admin" && <AdminBell />}
-            {user?.role === "student" && <StudentBell />}
+            {user?.role === "student" && <NotifBell base="/student/notifications" />}
+            {user?.role === "tutor" && <NotifBell base="/notifications" />}
             <Link to="/profile" className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#E6F5F8] transition-colors duration-200" data-testid="header-profile-link">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-[#0A1128] leading-tight">{user?.name}</p>

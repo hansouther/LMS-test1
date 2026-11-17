@@ -9,6 +9,7 @@ from security import require_roles
 from grading import strip_answers, grade_attempt
 import analysis
 import irt
+import access_codes
 from tryout_session import schedule_status, remaining_seconds, answered_count
 
 router = APIRouter(prefix="/api/student", tags=["student"])
@@ -174,8 +175,10 @@ async def dashboard(user: dict = Depends(student_only)):
 async def courses(user: dict = Depends(student_only)):
     items = await db.courses.find({"active": True}, {"_id": 0}).sort("created_at", -1).to_list(100)
     enrolled = set(await _enrolled_course_ids(user["id"]))
+    unlocked = await access_codes.unlocked_ids("course", user["id"])
     for c in items:
         c["enrolled"] = c["id"] in enrolled
+        c["locked"] = bool(c.get("code_locked")) and not c["enrolled"] and c["id"] not in unlocked
     return items
 
 
@@ -187,6 +190,7 @@ async def enroll(course_id: str, user: dict = Depends(student_only)):
     exists = await db.enrollments.find_one({"course_id": course_id, "student_id": user["id"]})
     if exists:
         raise HTTPException(status_code=400, detail="Anda sudah terdaftar di kursus ini")
+    await access_codes.require_unlocked("course", course, user["id"])
     if int(course.get("price") or 0) > 0:
         raise HTTPException(status_code=402, detail="Kursus ini berbayar. Selesaikan pembayaran untuk mendaftar.")
     await db.enrollments.insert_one({
@@ -292,6 +296,7 @@ async def tryouts(user: dict = Depends(student_only)):
     amap = {a["tryout_id"]: a for a in my_attempts}
     access = {r["tryout_id"] for r in await db.tryout_access.find({"student_id": user["id"]}, {"_id": 0, "tryout_id": 1}).to_list(500)}
     grants = {r["tryout_id"] for r in await db.tryout_retakes.find({"student_id": user["id"], "used": False}, {"_id": 0, "tryout_id": 1}).to_list(500)}
+    unlocked = await access_codes.unlocked_ids("tryout", user["id"])
     tids = [t["id"] for t in items]
     qc_map = {}
     if tids:
@@ -310,6 +315,7 @@ async def tryouts(user: dict = Depends(student_only)):
         t["has_access"] = t["price"] <= 0 or t["id"] in access or att is not None
         t["schedule_status"] = schedule_status(t)
         t["retake_granted"] = t["id"] in grants
+        t["locked"] = bool(t.get("code_locked")) and att is None and t["id"] not in unlocked
     return items
 
 
@@ -318,6 +324,8 @@ async def tryout_detail(tryout_id: str, user: dict = Depends(student_only)):
     t = await db.tryouts.find_one({"id": tryout_id, "published": True}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Try Out tidak ditemukan")
+    if t.get("kind") != "exercise" and not await db.attempts.find_one({"tryout_id": tryout_id, "student_id": user["id"]}):
+        await access_codes.require_unlocked("tryout", t, user["id"])
     if int(t.get("price") or 0) > 0 and t.get("kind") != "exercise":
         has_attempt = await db.attempts.find_one({"tryout_id": tryout_id, "student_id": user["id"]})
         has_access = await db.tryout_access.find_one({"tryout_id": tryout_id, "student_id": user["id"]})
@@ -370,6 +378,8 @@ async def start_attempt(tryout_id: str, user: dict = Depends(student_only)):
         )
         if submitted:
             raise HTTPException(status_code=400, detail="Anda sudah menyelesaikan Try Out ini")
+        if not grant:
+            await access_codes.require_unlocked("tryout", t, user["id"])
         if int(t.get("price") or 0) > 0 and not await db.tryout_access.find_one(
                 {"tryout_id": tryout_id, "student_id": user["id"]}):
             raise HTTPException(status_code=402, detail="Try Out ini berbayar. Selesaikan pembayaran untuk mengerjakan.")
